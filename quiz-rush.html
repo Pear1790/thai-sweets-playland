@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<title>Quiz Rush ปั่นควิซ</title>
+<link href="vendor/fonts/kanit.css" rel="stylesheet">
+<style>
+  :root{--gold:#ffe27a;--pink:#ff5d8f;--ok:#6fd26b;--bad:#ff6b6b}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;min-height:100vh;font-family:Kanit,"Noto Sans Thai",system-ui,sans-serif;color:#fff;
+    background:linear-gradient(#0f4a4a,#2b1b55 55%,#5a1a4a);background-attachment:fixed}
+  main{max-width:520px;margin:0 auto;padding:16px 16px 40px;min-height:100vh;display:flex;flex-direction:column}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .home{color:#d8f5ee;text-decoration:none;font-size:14px;padding:6px 12px;border-radius:99px;background:rgba(0,0,0,.3)}
+  h1{margin:10px 0 0;text-align:center;font-size:44px;color:var(--gold);text-shadow:0 3px 0 #4a1a00;line-height:1.05}
+  h1 span{color:var(--pink)}
+  .lead{text-align:center;color:#d8f5ee;margin:6px 0 20px}
+  .screen{display:none;flex:1;flex-direction:column}
+  .screen.on{display:flex}
+  .cats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  .cat{padding:12px 8px;border-radius:16px;border:2px solid rgba(255,226,122,.35);background:rgba(255,255,255,.08);color:#fff;font:600 16px Kanit,sans-serif;cursor:pointer}
+  .cat[aria-pressed=true]{background:linear-gradient(#ffe27a,#ffa41f);color:#5a2c00;border-color:#fff}
+  .cat.wide{grid-column:1/-1}
+  .btn{display:block;width:100%;padding:16px;border:2px solid #fff;border-radius:99px;font:700 22px Kanit,sans-serif;color:#5a2c00;cursor:pointer;
+    background:linear-gradient(#ffe27a,#ffa41f 60%,#d27d00);box-shadow:0 5px 0 #8a4b00,0 10px 20px rgba(0,0,0,.35)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8a4b00}
+  .btn.alt{background:linear-gradient(#a9e4ff,#4cb8ff);box-shadow:0 5px 0 #1a6fa8;margin-top:12px;font-size:18px}
+  .how{margin:18px 0 0;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.28);font-size:14px;line-height:1.7;color:#e8fff8}
+  .best{text-align:center;margin-top:14px;color:var(--gold)}
+  /* play */
+  .hud{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px}
+  .score{font-size:34px;font-weight:700;color:var(--gold);line-height:1}
+  .combo{font-size:20px;font-weight:700;color:var(--pink);min-width:90px;text-align:right}
+  .bar{height:18px;border-radius:99px;background:rgba(0,0,0,.4);margin:10px 0;overflow:hidden;border:2px solid rgba(255,255,255,.4)}
+  .bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#6fd26b,#ffe27a);transform-origin:left}
+  .frenzy .bar i{background:linear-gradient(90deg,#ff5d8f,#ff9a3d);animation:pulse .4s infinite alternate}
+  .time{text-align:center;font-weight:700;font-size:16px;color:#d8f5ee}
+  .frenzy .time{color:var(--pink)}
+  .qbox{margin:14px 0;padding:22px 18px;border-radius:24px;text-align:center;font-size:23px;font-weight:600;line-height:1.35;min-height:130px;display:grid;place-items:center;
+    background:linear-gradient(#fff3d1,#f1d595);color:#4a2a10;border:4px solid #c8861f;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .catlabel{font-size:12px;opacity:.7;display:block;margin-bottom:4px}
+  .choices{display:grid;gap:10px}
+  .ch{padding:15px 14px;border-radius:18px;border:3px solid #c8861f;background:#fff;color:#4a2a10;font:600 18px Kanit,sans-serif;cursor:pointer;text-align:left;display:flex;gap:10px;align-items:center}
+  .ch b{flex:none;width:28px;height:28px;border-radius:50%;background:#ffe9b8;display:grid;place-items:center;font-size:14px}
+  .ch.ok{background:var(--ok);border-color:#2f8a2a}
+  .ch.no{background:var(--bad);border-color:#b02a2a}
+  .shake{animation:shake .3s}
+  .pop{position:fixed;pointer-events:none;font-weight:700;font-size:28px;color:var(--gold);text-shadow:0 2px 0 #4a1a00;animation:rise .8s forwards}
+  @keyframes rise{to{transform:translateY(-70px);opacity:0}}
+  @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  @keyframes pulse{to{filter:brightness(1.4)}}
+  /* result */
+  .rank{text-align:center;font-size:26px;font-weight:700;color:var(--pink);margin:0}
+  .big{text-align:center;font-size:84px;font-weight:700;color:var(--gold);line-height:1;text-shadow:0 4px 0 #4a1a00}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+  .stats div{padding:10px 4px;border-radius:14px;background:rgba(0,0,0,.3);text-align:center;font-size:13px}
+  .stats strong{display:block;font-size:22px;color:var(--gold)}
+  .rev{margin-top:14px}
+  .rev h3{margin:0 0 8px;font-size:17px;color:var(--gold)}
+  .rev .it{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.1);margin-bottom:8px;font-size:14px;line-height:1.5}
+  .rev .it em{color:var(--ok);font-style:normal;font-weight:700}
+  .newbest{color:var(--pink);text-align:center;font-weight:700}
+  /* teacher */
+  .th{margin:14px 0 4px;text-align:center;color:var(--gold);font-size:28px}
+  .lab{font-size:14px;color:#d8f5ee}
+  .field{display:block;width:100%;padding:12px 14px;margin:6px 0;border-radius:14px;border:2px solid rgba(255,226,122,.35);background:rgba(0,0,0,.3);color:#fff;font:16px Kanit,sans-serif;resize:vertical}
+  .field:focus{outline:none;border-color:var(--gold)}
+  .field.ok{border-color:rgba(111,210,107,.6)}
+  .qi{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin:8px 0;border-radius:14px;background:rgba(255,255,255,.1);font-size:14px}
+  .qc{font-size:13px;color:#d8f5ee;margin-top:2px}
+  .qx{flex:none;border:0;border-radius:99px;padding:4px 12px;background:rgba(255,107,107,.85);color:#fff;font:600 13px Kanit,sans-serif;cursor:pointer}
+  .btn.danger{background:linear-gradient(#ffb3b3,#ff6b6b);box-shadow:0 5px 0 #a33}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a class="home" href="index.html">⌂ เมนูหลัก</a><button class="home" id="mute" style="border:0;font:inherit;cursor:pointer">🔊 เสียง</button></div>
+
+  <section class="screen on" id="start">
+    <h1>QUIZ <span>RUSH</span></h1>
+    <p class="lead">ตอบให้ไว ต่อคอมโบ ทำคะแนนใน 60 วินาที</p>
+    <div class="cats" id="cats"></div>
+    <button class="btn" id="go">เริ่มปั่น!</button>
+    <button class="btn alt" id="teach">🧑‍🏫 โหมดครู: สร้างชุดคำถามเอง</button>
+    <div class="best" id="bestLine"></div>
+    <div class="how">
+      • ตอบถูก <b>+2 วินาที</b> ตอบผิด <b>−4 วินาที</b><br>
+      • ถูกติดกันทุก 3 ข้อ ตัวคูณคะแนนเพิ่ม (สูงสุด ×5)<br>
+      • 10 วินาทีสุดท้ายเข้าโหมด <b>ปั่นสุดแรง</b> คะแนน ×2<br>
+      • ใช้คีย์ 1 2 3 4 ตอบได้บนคอมพิวเตอร์
+    </div>
+  </section>
+
+  <section class="screen" id="play">
+    <div id="playBox">
+      <div class="hud"><div class="score" id="score">0</div><div class="combo" id="combo"></div></div>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="time" id="time">60</div>
+      <div class="qbox" id="qbox"></div>
+      <div class="choices" id="choices"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="result">
+    <p class="rank" id="rank"></p>
+    <div class="big" id="final">0</div>
+    <div class="newbest" id="newbest"></div>
+    <div class="stats" id="stats"></div>
+    <button class="btn" id="again">เล่นอีกครั้ง</button>
+    <button class="btn alt" id="toStart">เปลี่ยนหมวด</button>
+    <div class="rev" id="rev"></div>
+  </section>
+
+  <section class="screen" id="teacher">
+    <h2 class="th">🧑‍🏫 โหมดครู</h2>
+    <p class="lead">สร้างชุดคำถามของคุณเอง แล้วส่ง "รหัสแชร์" ให้นักเรียนนำเข้าไปเล่น</p>
+    <div id="tList"></div>
+    <button class="btn" id="tNew">+ สร้างชุดคำถามใหม่</button>
+    <div class="how">
+      <b>นำเข้าชุดคำถามจากรหัสแชร์</b>
+      <textarea class="field" id="tCode" rows="3" placeholder="วางรหัสแชร์ที่ขึ้นต้นด้วย QR1:"></textarea>
+      <button class="btn alt" id="tImport">นำเข้า</button>
+      <div class="best" id="tMsg"></div>
+    </div>
+    <button class="btn alt" id="tBack">กลับหน้าแรก</button>
+  </section>
+
+  <section class="screen" id="editor">
+    <h2 class="th">แก้ไขชุดคำถาม <span id="eCount" style="font-size:16px;color:#d8f5ee"></span></h2>
+    <label class="lab" for="eName">ชื่อชุดคำถาม</label>
+    <input class="field" id="eName" maxlength="40" placeholder="เช่น ประวัติศาสตร์ ม.2 บทที่ 3">
+    <div id="eList"></div>
+    <div class="how">
+      <b>เพิ่มคำถาม</b>
+      <input class="field" id="fQ" maxlength="200" placeholder="คำถาม">
+      <input class="field ok" id="fA" maxlength="80" placeholder="✓ คำตอบที่ถูก">
+      <input class="field" id="fW1" maxlength="80" placeholder="✗ ตัวเลือกผิด 1">
+      <input class="field" id="fW2" maxlength="80" placeholder="✗ ตัวเลือกผิด 2">
+      <input class="field" id="fW3" maxlength="80" placeholder="✗ ตัวเลือกผิด 3 (ไม่บังคับ)">
+      <input class="field" id="fE" maxlength="300" placeholder="คำอธิบายเฉลย (ไม่บังคับ)">
+      <button class="btn alt" id="fAdd">+ เพิ่มคำถามนี้</button>
+      <div class="best" id="fMsg"></div>
+    </div>
+    <button class="btn" id="eSave">บันทึกชุดคำถาม</button>
+    <button class="btn alt" id="eShare">คัดลอกรหัสแชร์</button>
+    <button class="btn alt danger" id="eDel">ลบชุดนี้</button>
+    <button class="btn alt" id="eBack">กลับ</button>
+    <div class="best" id="eMsg"></div>
+  </section>
+</main>
+
+<script src="js/hub.js"></script>
+<script>
+// คำตอบที่ถูกอยู่ตัวแรกเสมอ แล้วจะถูกสลับตอนเล่น
+const CATS = {
+  sweets: { name: '🍮 ขนมไทย', qs: [
+    { q: 'ทองหยอดมีวัตถุดิบหลักคืออะไร?', c: ['ไข่แดง แป้ง น้ำตาล', 'ถั่วเขียว กะทิ', 'ข้าวเหนียว มะม่วง'], e: 'ทองหยอดทำจากไข่แดง แป้ง และน้ำตาล หยอดลงน้ำเชื่อมเดือด' },
+    { q: 'ฝอยทองได้แรงบันดาลใจจากขนมของประเทศใด?', c: ['โปรตุเกส', 'ญี่ปุ่น', 'อินเดีย'], e: 'ดัดแปลงจากขนมโปรตุเกสชื่อ fios de ovos แปลว่า "เส้นไข่"' },
+    { q: 'ขนมชั้นแบบมงคลนิยมทำกี่ชั้น?', c: ['9 ชั้น', '5 ชั้น', '7 ชั้น'], e: 'เลข 9 เชื่อกันว่าเป็นเลขมงคล แปลว่าก้าวหน้า' },
+    { q: 'สีม่วงของช่อม่วงมาจากอะไร?', c: ['ดอกอัญชัน', 'ใบเตย', 'ขมิ้น'], e: 'ดอกอัญชันให้สีน้ำเงินและม่วงตามความเป็นกรด-ด่าง' },
+    { q: 'ไส้ของลูกชุบทำจากอะไรเป็นหลัก?', c: ['ถั่วเขียว', 'เผือก', 'ฟักทอง'], e: 'ถั่วเขียวกวนกับน้ำตาลและกะทิ ปั้นเป็นผลไม้จิ๋วแล้วชุบวุ้น' },
+    { q: 'น้ำตาลดั้งเดิมของขนมไทยโบราณได้จากพืชใด?', c: ['ตาลโตนดและมะพร้าว', 'หัวบีต', 'อ้อยเท่านั้น'], e: 'ขนมไทยโบราณใช้วัตถุดิบใกล้ตัว เช่น ข้าว มะพร้าว และน้ำตาลจากตาล' },
+    { q: 'ใบเตยให้อะไรกับขนมไทย?', c: ['สีเขียวและกลิ่นหอม', 'สีแดงและรสเปรี้ยว', 'รสเค็มจัด'], e: 'น้ำคั้นใบเตยเป็นสีและกลิ่นธรรมชาติที่ใช้กันมานาน' },
+    { q: 'ใครเชื่อกันว่านำขนมไข่แบบโปรตุเกสมาปรับเป็นขนมไทยสมัยอยุธยา?', c: ['ท้าวทองกีบม้า', 'ท้าวสุรนารี', 'สุนทรภู่'], e: 'เชื่อกันว่าเป็นท้าวทองกีบม้า (มารี กีมาร์) ในรัชสมัยสมเด็จพระนารายณ์มหาราช' },
+    { q: 'ทำไมขนมมงคลจึงนิยมจัดเป็นชุด 9 อย่าง?', c: ['"เก้า" พ้องเสียงกับ "ก้าว" หมายถึงก้าวหน้า', 'เพราะใช้ไข่ 9 ฟอง', 'เพราะทำเสร็จใน 9 นาที'], e: 'คนไทยเชื่อว่าเลข 9 พ้องเสียงกับคำว่าก้าว จึงหมายถึงความเจริญก้าวหน้า' },
+    { q: 'ขนมเม็ดขนุนมีความหมายมงคลว่าอะไร?', c: ['มีคนคอยหนุนนำ', 'อายุยืนยาว', 'มีเงินทองไม่ขาดมือ'], e: 'ชื่อ "ขนุน" ฟังคล้าย "หนุน" จึงหมายถึงมีคนช่วยสนับสนุน' },
+    { q: 'ฝอยทองที่เป็นเส้นยาวสื่อความหมายถึงอะไร?', c: ['อายุที่ยืนยาว', 'การเลื่อนตำแหน่ง', 'การเดินทางปลอดภัย'], e: 'เส้นฝอยทองที่เรียวยาวสื่อถึงชีวิตที่ยืนยาว' },
+    { q: 'ขนมจ่ามงกุฎสื่อความหมายมงคลถึงอะไร?', c: ['ยศตำแหน่งและความก้าวหน้า', 'ความรักหวานชื่น', 'ฝนตกต้องตามฤดูกาล'], e: 'จ่ามงกุฎสื่อถึงความเจริญก้าวหน้า มียศตำแหน่งเป็นที่นับหน้าถือตา' },
+    { q: 'คำว่า "ชุบ" ในชื่อลูกชุบหมายถึงอะไร?', c: ['การจุ่มเคลือบ', 'การนึ่ง', 'การปั้น'], e: 'ลูกชุบคือการปั้นถั่วเขียวเป็นผลไม้จิ๋ว แต้มสี แล้วจุ่มเคลือบด้วยวุ้น' }
+  ]},
+  culture: { name: '🏯 วัฒนธรรมไทย', qs: [
+    { q: 'วันสงกรานต์ตรงกับวันที่เท่าไรของเดือนเมษายน (วันแรกของเทศกาล)?', c: ['13 เมษายน', '1 เมษายน', '25 เมษายน'], e: 'สงกรานต์คือปีใหม่ไทยดั้งเดิม ตรงกับวันที่ 13–15 เมษายน' },
+    { q: 'ประเพณีลอยกระทงจัดตรงกับเดือนใดตามจันทรคติ?', c: ['เดือน 12', 'เดือน 5', 'เดือน 8'], e: 'ลอยกระทงตรงกับวันขึ้น 15 ค่ำ เดือน 12' },
+    { q: 'ประเทศไทยใช้ชื่อ "ไทย" แทน "สยาม" อย่างเป็นทางการเริ่มต้นในปีใด?', c: ['พ.ศ. 2482', 'พ.ศ. 2411', 'พ.ศ. 2475'], e: 'เปลี่ยนชื่อประเทศเป็น "ไทย" ในปี พ.ศ. 2482' },
+    { q: 'ดอกไม้ประจำชาติไทยคือดอกอะไร?', c: ['ราชพฤกษ์ (ดอกคูน)', 'ดอกบัว', 'ดอกมะลิ'], e: 'ราชพฤกษ์หรือดอกคูนเป็นดอกไม้ประจำชาติไทย' },
+    { q: 'ผู้ประพันธ์เรื่อง "พระอภัยมณี" คือใคร?', c: ['สุนทรภู่', 'เจ้าฟ้ากุ้ง', 'ศรีปราชญ์'], e: 'พระอภัยมณีเป็นนิทานคำกลอนเรื่องเอกของสุนทรภู่' },
+    { q: 'ประเพณี "บุญบั้งไฟ" เป็นที่รู้จักในภาคใด?', c: ['ภาคอีสาน', 'ภาคใต้', 'ภาคกลาง'], e: 'บุญบั้งไฟเป็นประเพณีขอฝนของภาคอีสาน' },
+    { q: 'กรุงศรีอยุธยาก่อตั้งโดยพระมหากษัตริย์พระองค์ใด?', c: ['พระเจ้าอู่ทอง', 'พระนเรศวร', 'พระเจ้าตากสิน'], e: 'พระเจ้าอู่ทอง (สมเด็จพระรามาธิบดีที่ 1) สถาปนากรุงศรีอยุธยา' },
+    { q: 'การทักทายด้วยการยกมือไหว้ของไทยเรียกว่าอะไร?', c: ['การไหว้', 'การคำนับ', 'การโค้ง'], e: 'การไหว้เป็นการแสดงความเคารพและทักทายแบบไทย' }
+  ]},
+  science: { name: '🔬 วิทยาศาสตร์', qs: [
+    { q: 'ทำไมน้ำแข็งจึงลอยน้ำ?', c: ['ความหนาแน่นน้อยกว่าน้ำ', 'เบากว่าอากาศ', 'เย็นกว่าน้ำ'], e: 'น้ำแข็งมีความหนาแน่นน้อยกว่าน้ำของเหลว จึงลอยอยู่ได้' },
+    { q: 'ดาวเคราะห์ดวงใดอยู่ใกล้ดวงอาทิตย์ที่สุด?', c: ['พุธ', 'ศุกร์', 'อังคาร'], e: 'ดาวพุธอยู่ใกล้ดวงอาทิตย์ที่สุดในระบบสุริยะ' },
+    { q: 'พืชสังเคราะห์แสงแล้วปล่อยก๊าซอะไร?', c: ['ออกซิเจน', 'ไนโตรเจน', 'ไฮโดรเจน'], e: 'พืชใช้แสง น้ำ และคาร์บอนไดออกไซด์ สร้างอาหารและปล่อยออกซิเจน' },
+    { q: 'เซลล์เม็ดเลือดแดงทำหน้าที่หลักอะไร?', c: ['พาออกซิเจนไปทั่วร่างกาย', 'ต่อสู้เชื้อโรค', 'ช่วยให้เลือดแข็งตัว'], e: 'เม็ดเลือดแดงมีฮีโมโกลบินจับออกซิเจน' },
+    { q: 'เสียงเดินทางผ่านสุญญากาศได้หรือไม่?', c: ['ไม่ได้', 'ได้ แต่ช้าลง', 'ได้เร็วขึ้น'], e: 'เสียงต้องอาศัยตัวกลาง เช่น อากาศ น้ำ หรือของแข็ง' },
+    { q: 'สูตรเคมี H₂O คือสารอะไร?', c: ['น้ำ', 'เกลือ', 'แอลกอฮอล์'], e: 'น้ำประกอบด้วยไฮโดรเจน 2 อะตอมและออกซิเจน 1 อะตอม' },
+    { q: 'สารให้สีในดอกอัญชันที่ไวต่อความเป็นกรด-ด่างคืออะไร?', c: ['แอนโทไซยานิน', 'คลอโรฟิลล์', 'แคโรทีน'], e: 'แอนโทไซยานินเปลี่ยนสีตามค่า pH เช่น เปลี่ยนเป็นม่วงเมื่อโดนมะนาว' },
+    { q: 'ดวงจันทร์โคจรรอบโลกครบหนึ่งรอบใช้เวลาประมาณเท่าไร?', c: ['ประมาณ 1 เดือน', 'ประมาณ 1 สัปดาห์', 'ประมาณ 1 ปี'], e: 'ประมาณ 27–29 วัน' }
+  ]},
+  ai: { name: '🤖 AI รู้ไว้', qs: [
+    { q: 'LLM ย่อมาจากอะไร?', c: ['Large Language Model', 'Long Learning Machine', 'Linked Logic Module'], e: 'LLM คือโมเดลภาษาขนาดใหญ่ที่เรียนรู้จากข้อความจำนวนมหาศาล' },
+    { q: '"พรอมต์" (prompt) คืออะไร?', c: ['ข้อความคำสั่งที่ส่งให้ AI', 'รหัสผ่านของ AI', 'ชื่อรุ่นของโมเดล'], e: 'พรอมต์คือคำสั่งหรือคำถามที่เราพิมพ์ให้ AI' },
+    { q: 'อาการ "Hallucination" ของ AI หมายถึงอะไร?', c: ['ตอบอย่างมั่นใจแต่ข้อมูลผิดหรือแต่งขึ้นมา', 'ตอบช้ามาก', 'ปฏิเสธไม่ตอบ'], e: 'AI อาจแต่งข้อมูลที่ฟังดูน่าเชื่อ จึงต้องตรวจสอบเสมอ' },
+    { q: 'ข้อมูลสำคัญที่ AI ตอบมา ควรทำอย่างไร?', c: ['ตรวจสอบกับแหล่งอ้างอิงที่เชื่อถือได้', 'เชื่อได้ทันที', 'ไม่ต้องสนใจ'], e: 'ควรตรวจกับแหล่งที่น่าเชื่อถือก่อนนำไปใช้จริง' },
+    { q: '"Token" ในโมเดลภาษาคืออะไร?', c: ['หน่วยย่อยของข้อความที่โมเดลประมวลผล', 'รหัสเข้าสู่ระบบ', 'เหรียญดิจิทัล'], e: 'ข้อความถูกแบ่งเป็นโทเคนเพื่อให้โมเดลประมวลผล' },
+    { q: 'พรอมต์ที่ดีควรระบุอะไรบ้าง?', c: ['บทบาท งาน บริบท และรูปแบบผลลัพธ์', 'แค่คำสั้น ๆ คำเดียว', 'ภาษาอังกฤษเท่านั้น'], e: 'ยิ่งระบุเป้าหมาย บริบท และรูปแบบที่ต้องการชัด ผลลัพธ์ยิ่งตรง' },
+    { q: '"Context window" ของโมเดลหมายถึงอะไร?', c: ['ปริมาณข้อความที่โมเดลมองเห็นได้ในครั้งเดียว', 'หน้าต่างของโปรแกรม', 'จำนวนผู้ใช้พร้อมกัน'], e: 'ถ้าเกินขนาดนี้ โมเดลจะมองไม่เห็นส่วนที่ไกลออกไป' },
+    { q: 'Text-to-image คืออะไร?', c: ['สร้างภาพจากข้อความที่พิมพ์', 'แปลงภาพเป็นตัวอักษร', 'แปลภาษาในรูป'], e: 'เช่น Midjourney ที่สร้างภาพจากพรอมต์' }
+  ]}
+};
+const ORDER = ['all', 'sweets', 'culture', 'science', 'ai'];
+const $ = id => document.getElementById(id);
+const rand = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+
+let cat = 'all', best = {}, muted = false, ac = null;
+try { best = JSON.parse(localStorage.getItem('quiz-rush-best') || '{}'); } catch (e) {}
+function tone(f, d, type = 'sine', v = .1, delay = 0) {
+  if (muted) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? '🔇 เสียง' : '🔊 เสียง'; };
+
+// ----- start screen -----
+function drawCats() {
+  $('cats').innerHTML = '';
+  if (cat.startsWith('set:') && !sets.find(s => 'set:' + s.id === cat)) cat = 'all';
+  [...ORDER, ...sets.map(s => 'set:' + s.id)].forEach(k => {
+    const b = document.createElement('button'), set = setOf(k);
+    b.className = 'cat' + (k === 'all' || set ? ' wide' : '');
+    b.textContent = k === 'all' ? '🎲 ผสมทุกหมวด' : set ? '📝 ' + set.name + ' (' + set.qs.length + ' ข้อ)' : CATS[k].name;
+    b.setAttribute('aria-pressed', k === cat);
+    b.onclick = () => { cat = k; drawCats(); drawBest(); };
+    $('cats').appendChild(b);
+  });
+}
+
+// ----- teacher mode: ชุดคำถามของครู -----
+let sets = [];
+try { sets = JSON.parse(localStorage.getItem('quiz-rush-sets') || '[]'); } catch (e) {}
+const setOf = k => k.startsWith('set:') ? sets.find(s => 'set:' + s.id === k) : null;
+function saveSets() {
+  try { localStorage.setItem('quiz-rush-sets', JSON.stringify(sets)); } catch (e) {}
+  if (window.Hub) Hub.stat('quiz.sets', sets.length, 'set');
+}
+const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
+function cleanSet(raw) { // ตรวจรูปแบบชุดที่นำเข้า เก็บเฉพาะข้อความ
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.qs)) return null;
+  const qs = raw.qs.slice(0, 200).map(q => ({
+    q: clip(q && q.q, 200), e: clip(q && q.e, 300),
+    c: (Array.isArray(q && q.c) ? q.c : []).slice(0, 4).map(x => clip(x, 80)).filter(Boolean)
+  })).filter(q => q.q && q.c.length >= 2);
+  return qs.length ? { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: clip(raw.name, 40) || 'ชุดคำถาม', qs } : null;
+}
+const toCode = set => 'QR1:' + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify({ name: set.name, qs: set.qs }))));
+function fromCode(code) {
+  try {
+    const b = atob(code.trim().replace(/^QR1:/, '')), bytes = Uint8Array.from(b, ch => ch.charCodeAt(0));
+    return cleanSet(JSON.parse(new TextDecoder().decode(bytes)));
+  } catch (e) { return null; }
+}
+let edit = null;
+function drawTeacher() {
+  const box = $('tList'); box.innerHTML = '';
+  if (!sets.length) { const p = document.createElement('p'); p.className = 'lead'; p.textContent = 'ยังไม่มีชุดคำถาม กดสร้างชุดใหม่ได้เลย'; box.appendChild(p); }
+  sets.forEach(s => {
+    const b = document.createElement('button'); b.className = 'cat wide'; b.style.marginBottom = '8px';
+    b.textContent = '📝 ' + s.name + ' · ' + s.qs.length + ' ข้อ (กดเพื่อแก้ไข)';
+    b.onclick = () => openEditor(s); box.appendChild(b);
+  });
+}
+function openEditor(s) {
+  edit = s ? JSON.parse(JSON.stringify(s)) : { id: null, name: '', qs: [] };
+  $('eName').value = edit.name; $('eMsg').textContent = '';
+  $('eDel').style.display = $('eShare').style.display = s ? 'block' : 'none';
+  drawEditor(); show('editor'); window.scrollTo(0, 0);
+}
+function drawEditor() {
+  const box = $('eList'); box.innerHTML = '';
+  edit.qs.forEach((q, i) => {
+    const d = document.createElement('div'); d.className = 'qi';
+    const t = document.createElement('div'); t.style.flex = '1';
+    const a = document.createElement('b'); a.textContent = (i + 1) + '. ' + q.q;
+    const c = document.createElement('div'); c.className = 'qc'; c.textContent = '✓ ' + q.c[0] + '   ✗ ' + q.c.slice(1).join(' / ');
+    t.append(a, c);
+    const x = document.createElement('button'); x.className = 'qx'; x.textContent = 'ลบ'; x.setAttribute('aria-label', 'ลบคำถามข้อ ' + (i + 1));
+    x.onclick = () => { edit.qs.splice(i, 1); drawEditor(); };
+    d.append(t, x); box.appendChild(d);
+  });
+  $('eCount').textContent = edit.qs.length + ' ข้อ';
+}
+function initTeacher() {
+  $('teach').onclick = () => { drawTeacher(); show('teacher'); };
+  $('tBack').onclick = () => { drawCats(); drawBest(); show('start'); };
+  $('tNew').onclick = () => openEditor(null);
+  $('eBack').onclick = () => { drawTeacher(); show('teacher'); };
+  $('fAdd').onclick = () => {
+    const q = clip($('fQ').value, 200), c = ['fA', 'fW1', 'fW2', 'fW3'].map(id => clip($(id).value, 80)).filter(Boolean);
+    if (!q || !clip($('fA').value, 80) || c.length < 3) { $('fMsg').textContent = 'ใส่คำถาม คำตอบที่ถูก และตัวเลือกผิดอย่างน้อย 2 ตัว'; return; }
+    edit.qs.push({ q, c, e: clip($('fE').value, 300) });
+    ['fQ', 'fA', 'fW1', 'fW2', 'fW3', 'fE'].forEach(id => $(id).value = ''); $('fMsg').textContent = ''; $('fQ').focus(); drawEditor();
+  };
+  $('eSave').onclick = () => {
+    edit.name = clip($('eName').value, 40);
+    if (!edit.name) { $('eMsg').textContent = 'ตั้งชื่อชุดคำถามก่อนนะ'; return; }
+    if (!edit.qs.length) { $('eMsg').textContent = 'เพิ่มคำถามอย่างน้อย 1 ข้อ'; return; }
+    if (!edit.id) { edit.id = Date.now().toString(36); sets.push(edit); } else sets[sets.findIndex(s => s.id === edit.id)] = edit;
+    saveSets(); $('eMsg').textContent = 'บันทึกแล้ว ✓ เลือกเล่นได้ที่หน้าแรก'; $('eDel').style.display = $('eShare').style.display = 'block';
+    edit = JSON.parse(JSON.stringify(edit));
+  };
+  $('eShare').onclick = async () => {
+    const code = toCode(edit);
+    try { await navigator.clipboard.writeText(code); $('eMsg').textContent = 'คัดลอกรหัสแชร์แล้ว ส่งให้นักเรียนนำไปวางในช่อง "นำเข้า" ได้เลย'; }
+    catch (e) { $('tCode').value = code; $('eMsg').textContent = 'คัดลอกอัตโนมัติไม่ได้ รหัสอยู่ในช่องนำเข้าของหน้าโหมดครู'; }
+  };
+  // ยืนยันในหน้าเอง: กดครั้งแรกเตือน กดซ้ำภายใน 4 วินาทีจึงลบ
+  let delArm = 0;
+  $('eDel').onclick = () => {
+    if (Date.now() - delArm > 4000) { delArm = Date.now(); $('eDel').textContent = 'กดอีกครั้งเพื่อยืนยันการลบ'; setTimeout(() => { $('eDel').textContent = 'ลบชุดนี้'; }, 4000); return; }
+    delArm = 0; $('eDel').textContent = 'ลบชุดนี้';
+    sets = sets.filter(s => s.id !== edit.id); saveSets(); drawTeacher(); show('teacher');
+  };
+  $('tImport').onclick = () => {
+    const s = fromCode($('tCode').value);
+    if (!s) { $('tMsg').textContent = 'รหัสไม่ถูกต้อง ลองคัดลอกใหม่อีกครั้ง'; return; }
+    sets.push(s); saveSets(); $('tCode').value = ''; $('tMsg').textContent = 'นำเข้า "' + s.name + '" แล้ว (' + s.qs.length + ' ข้อ)'; drawTeacher();
+  };
+}
+function drawBest() { $('bestLine').textContent = best[cat] ? 'คะแนนสูงสุดของหมวดนี้ ' + best[cat] : 'ยังไม่มีสถิติ ลองทำคะแนนแรกดู!'; }
+
+// ----- game -----
+let G = null;
+function buildDeck() {
+  const set = setOf(cat);
+  if (set) return shuffle(set.qs.map(q => ({ ...q, cat: '📝 ' + set.name })));
+  const keys = cat === 'all' ? Object.keys(CATS) : [cat];
+  const all = []; keys.forEach(k => CATS[k].qs.forEach(q => all.push({ ...q, cat: CATS[k].name })));
+  return shuffle(all);
+}
+function start() {
+  G = { deck: buildDeck(), i: 0, score: 0, combo: 0, streak: 0, maxStreak: 0, time: 60, right: 0, total: 0, missed: [], lock: false, last: performance.now(), over: false, maxTime: 60 };
+  show('play'); nextQ(); requestAnimationFrame(tick);
+}
+function nextQ() {
+  if (G.i >= G.deck.length) { G.deck = buildDeck(); G.i = 0; }
+  const q = G.deck[G.i++]; G.cur = q;
+  q.order = shuffle(q.c.map((t, i) => ({ t, ok: i === 0 })));
+  const wrap = document.createElement('div'), lab = document.createElement('span');
+  lab.className = 'catlabel'; lab.textContent = q.cat; wrap.append(lab, q.q);
+  $('qbox').replaceChildren(wrap);
+  const box = $('choices'); box.innerHTML = '';
+  q.order.forEach((o, k) => {
+    const b = document.createElement('button'); b.className = 'ch'; b.innerHTML = '<b>' + (k + 1) + '</b><span></span>';
+    b.lastChild.textContent = o.t; b.onclick = () => answer(k, b); box.appendChild(b);
+  });
+  G.lock = false;
+}
+const mult = () => Math.min(5, 1 + Math.floor(G.streak / 3));
+function pop(text, el) {
+  const r = el.getBoundingClientRect(), p = document.createElement('div');
+  p.className = 'pop'; p.textContent = text; p.style.left = (r.left + r.width / 2 - 30) + 'px'; p.style.top = r.top + 'px';
+  document.body.appendChild(p); setTimeout(() => p.remove(), 800);
+}
+function answer(k, btn) {
+  if (G.lock || G.over) return; G.lock = true; G.total++;
+  const o = G.cur.order[k], frenzy = G.time <= 10;
+  btn.classList.add(o.ok ? 'ok' : 'no');
+  if (o.ok) {
+    G.right++; G.streak++; G.maxStreak = Math.max(G.maxStreak, G.streak); const pts = 100 * mult() * (frenzy ? 2 : 1); G.score += pts; G.time = Math.min(90, G.time + 2); G.maxTime = Math.max(G.maxTime, G.time);
+    pop('+' + pts, btn); tone(520 + G.streak * 40, .12, 'triangle');
+  } else {
+    G.streak = 0; G.time -= 4; G.missed.push(G.cur); pop('−4 วิ', btn); tone(150, .22, 'square', .07);
+    $('qbox').classList.add('shake'); setTimeout(() => $('qbox').classList.remove('shake'), 300);
+    [...$('choices').children].forEach((b, i) => { if (G.cur.order[i].ok) b.classList.add('ok'); });
+  }
+  setTimeout(() => { if (!G.over) nextQ(); }, o.ok ? 260 : 700);
+}
+function tick(ts) {
+  if (!G || G.over || !$('play').classList.contains('on')) return;
+  const dt = (ts - G.last) / 1000; G.last = ts; G.time -= dt;
+  if (G.time <= 0) { G.time = 0; end(); return; }
+  $('playBox').classList.toggle('frenzy', G.time <= 10);
+  $('bar').style.transform = 'scaleX(' + Math.min(1, G.time / G.maxTime) + ')';
+  $('time').textContent = G.time <= 10 ? 'ปั่นสุดแรง! ×2 · ' + Math.ceil(G.time) + ' วิ' : 'เหลือ ' + Math.ceil(G.time) + ' วินาที';
+  $('score').textContent = G.score;
+  $('combo').textContent = mult() > 1 ? 'คอมโบ ×' + mult() : (G.streak ? 'ถูก ' + G.streak + ' ติด' : '');
+  requestAnimationFrame(tick);
+}
+function end() {
+  G.over = true; tone(392, .2, 'triangle', .1); tone(294, .3, 'triangle', .1, .2);
+  const s = G.score, acc = G.total ? Math.round(G.right * 100 / G.total) : 0;
+  const rank = s >= 6000 ? 'ตำนานแห่งการปั่น 👑' : s >= 3000 ? 'เซียนปั่น 🔥' : s >= 1200 ? 'นักปั่นฝีมือดี ⚡' : 'มือใหม่หัดปั่น 🌱';
+  const isBest = s > (best[cat] || 0);
+  if (isBest && s > 0) { best[cat] = s; try { localStorage.setItem('quiz-rush-best', JSON.stringify(best)); } catch (e) {} }
+  if (window.Hub) {
+    Hub.stat('quiz.best', s); Hub.stat('quiz.streak', G.maxStreak); Hub.stat('quiz.correct', G.right, 'add');
+    if (!setOf(cat)) Hub.submit('quiz', s);
+  }
+  $('rank').textContent = rank; $('final').textContent = s;
+  $('newbest').textContent = isBest && s > 0 ? '🎉 สถิติใหม่!' : '';
+  $('stats').innerHTML = `<div><strong>${G.right}/${G.total}</strong>ตอบถูก</div><div><strong>${acc}%</strong>แม่นยำ</div><div><strong>${best[cat] || 0}</strong>สถิติสูงสุด</div>`;
+  const rev = $('rev'); rev.innerHTML = '';
+  if (G.missed.length) {
+    const h = document.createElement('h3'); h3text(h, 'ทบทวนข้อที่พลาด (' + G.missed.length + ')'); rev.appendChild(h);
+    G.missed.slice(0, 8).forEach(q => {
+      const d = document.createElement('div'); d.className = 'it';
+      const a = document.createElement('div'); a.textContent = q.q;
+      const b = document.createElement('div'); b.innerHTML = 'คำตอบ: <em></em>'; b.querySelector('em').textContent = q.c[0];
+      const c = document.createElement('div'); c.textContent = q.e;
+      d.append(a, b, c); rev.appendChild(d);
+    });
+  }
+  show('result'); window.scrollTo(0, 0);
+}
+function h3text(h, t) { h.textContent = t; }
+
+$('go').onclick = start; $('again').onclick = start;
+$('toStart').onclick = () => { show('start'); drawBest(); };
+addEventListener('keydown', e => {
+  if (!G || G.over || !$('play').classList.contains('on')) return;
+  const k = +e.key - 1; const b = $('choices').children[k]; if (b) b.click();
+});
+initTeacher(); drawCats(); drawBest();
+if (window.Hub) { Hub.visit('quiz'); Hub.mountMusic(); }
+</script>
+</body>
+</html>

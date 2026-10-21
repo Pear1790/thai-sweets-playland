@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<title>สารานุกรมสั่ง AI</title>
+<link href="vendor/fonts/kanit.css" rel="stylesheet">
+<style>
+  :root{--bg:#0e1a2b;--panel:#16263d;--line:#2a4160;--ink:#eaf2ff;--mute:#9bb3d1;--acc:#7fd6ff;--gold:#ffe27a;--ok:#6fd26b;--warn:#ffb86b}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:Kanit,"Noto Sans Thai",system-ui,sans-serif;background:linear-gradient(#0b1424,#12213a 40%,#1d1a3d);background-attachment:fixed;color:var(--ink);line-height:1.6}
+  header{padding:28px 16px 8px;max-width:1040px;margin:0 auto}
+  .home{color:var(--mute);text-decoration:none;font-size:14px}
+  h1{margin:8px 0 4px;font-size:clamp(30px,6vw,46px);color:var(--gold)}
+  .lead{color:var(--mute);margin:0 0 14px}
+  nav{position:sticky;top:0;z-index:5;background:rgba(11,20,36,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav div{max-width:1040px;margin:0 auto;padding:8px 16px;display:flex;gap:8px;overflow-x:auto}
+  nav a{flex:none;padding:6px 14px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:14px}
+  nav a:hover{border-color:var(--acc)}
+  main{max-width:1040px;margin:0 auto;padding:8px 16px 60px}
+  section{margin-top:34px;scroll-margin-top:60px}
+  h2{margin:0 0 6px;font-size:26px}
+  .sub{margin:0 0 14px;color:var(--mute);font-size:15px}
+  .note{padding:12px 16px;border-radius:14px;background:rgba(255,184,107,.1);border:1px solid rgba(255,184,107,.45);color:#ffe3c2;font-size:14px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .chip{padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:500 15px Kanit,sans-serif;cursor:pointer}
+  .chip:hover{border-color:var(--acc)}
+  .chip[aria-pressed=true]{background:var(--acc);color:#06263a;border-color:var(--acc);font-weight:600}
+  .rec{display:grid;gap:10px}
+  .recItem{display:flex;gap:14px;padding:14px 16px;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+  .rank{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--gold);color:#4a2a00}
+  .recItem:first-child{border-color:var(--gold)}
+  .recItem b{font-size:17px}
+  .recItem a{color:var(--acc);font-size:13px;cursor:pointer;text-decoration:underline}
+  .search{width:100%;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:16px Kanit,sans-serif;margin-bottom:12px}
+  .search:focus{outline:2px solid var(--acc)}
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(310px,100%),1fr))}
+  details.tool{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+  details.tool[open]{grid-column:1/-1}
+  summary{list-style:none;cursor:pointer;padding:16px;display:flex;gap:12px;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  .logo{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-size:24px}
+  .tn{font-weight:700;font-size:18px}
+  .tm{color:var(--mute);font-size:13px}
+  .tags{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;padding:1px 9px;border-radius:99px;background:rgba(127,214,255,.15);color:var(--acc)}
+  .body{padding:0 16px 18px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))}
+  .box h4{margin:0 0 6px;font-size:14px;color:var(--gold);letter-spacing:.3px}
+  .box ul{margin:0;padding-left:18px;font-size:14.5px}
+  .box li{margin:2px 0}
+  .cmd{display:flex;gap:8px;align-items:flex-start;margin:5px 0;font-size:14px}
+  code{font-family:Consolas,"Courier New",monospace;background:#0b1424;border:1px solid var(--line);border-radius:8px;padding:1px 8px;color:#bfe9ff;white-space:pre-wrap;word-break:break-word}
+  .wide{grid-column:1/-1}
+  .prompts{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(310px,100%),1fr))}
+  .pcard{padding:14px 16px;border-radius:16px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+  .pcard h3{margin:0;font-size:16px}
+  .pcard pre{margin:0;padding:10px 12px;border-radius:12px;background:#0b1424;border:1px solid var(--line);white-space:pre-wrap;word-break:break-word;font:13.5px/1.55 Kanit,"Noto Sans Thai",sans-serif;color:#d9ecff;flex:1}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .copy{padding:6px 14px;border-radius:99px;border:1px solid var(--acc);background:transparent;color:var(--acc);font:500 13px Kanit,sans-serif;cursor:pointer}
+  .copy.done{background:var(--ok);border-color:var(--ok);color:#06260a}
+  .recipe{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))}
+  .recipe div{padding:14px;border-radius:16px;background:var(--panel);border:1px solid var(--line);font-size:14px}
+  .recipe b{display:block;color:var(--gold);font-size:16px;margin-bottom:2px}
+  .tips{margin:14px 0 0;padding:14px 18px 14px 34px;border-radius:16px;background:var(--panel);border:1px solid var(--line);font-size:14.5px}
+  .empty{color:var(--mute);padding:20px;text-align:center}
+  .olink{color:var(--acc);font-weight:600}
+  .updated{margin-top:8px;font-size:13px;color:var(--mute)}
+  footer{max-width:1040px;margin:0 auto;padding:0 16px 40px;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <a class="home" href="index.html">⌂ กลับเมนูหลัก</a>
+  <h1>สารานุกรมสั่ง AI</h1>
+  <p class="lead">AI แต่ละตัวเก่งไม่เหมือนกัน เลือกให้ถูกตัวกับงาน แล้วสั่งให้ถูกวิธี ก็ได้ผลลัพธ์ที่ดีขึ้นมาก</p>
+  <div class="note">ข้อมูลในหน้านี้เป็นภาพรวมจุดเด่นและวิธีใช้ ชื่อรุ่นโมเดล ฟีเจอร์ และสิทธิ์ตามแพ็กเกจเปลี่ยนเร็วมาก โปรดตรวจรายละเอียดล่าสุดจากเว็บทางการของแต่ละเจ้าก่อนตัดสินใจ และอย่าใส่ข้อมูลลับหรือข้อมูลส่วนตัวลงใน AI ที่คุณไม่ไว้ใจ</div>
+  <div class="updated">ตรวจทานล่าสุด ตุลาคม 2569 · ภาพรวมปี 2569: รุ่นเรือธงของ ChatGPT, Claude และ Gemini รองรับข้อความยาวระดับประมาณหนึ่งล้านโทเคน และความสามารถใกล้เคียงกันมากขึ้น จุดต่างหลักจึงอยู่ที่ฟีเจอร์และการเชื่อมกับเครื่องมือที่คุณใช้อยู่ เราจึงไม่ระบุเลขรุ่นที่เปลี่ยนบ่อย ให้กดลิงก์เว็บทางการในแต่ละการ์ดเพื่อดูข้อมูลปัจจุบัน</div>
+</header>
+<nav><div>
+  <a href="#pick">เลือก AI ตามงาน</a><a href="#tools">AI แต่ละตัว</a><a href="#prompts">พรอมต์ให้ลอง</a><a href="#recipe">สูตรเขียนพรอมต์</a>
+</div></nav>
+
+<main>
+  <section id="pick">
+    <h2>🎯 อยากทำอะไร? เดี๋ยวแนะนำ AI ให้</h2>
+    <p class="sub">เลือกงานที่ต้องการ แล้วดูว่าควรเริ่มที่ AI ตัวไหนก่อน</p>
+    <div class="chips" id="taskChips"></div>
+    <div class="rec" id="rec"></div>
+  </section>
+
+  <section id="tools">
+    <h2>📚 AI แต่ละตัว ทำอะไรได้ สั่งอย่างไร</h2>
+    <p class="sub">กดที่การ์ดเพื่อดูรายละเอียด วิธีสั่ง และพรอมต์ตัวอย่าง</p>
+    <input class="search" id="q" type="search" placeholder="ค้นหา เช่น ภาพ, โค้ด, ค้นคว้า, Midjourney...">
+    <div class="chips" id="catChips"></div>
+    <div class="grid" id="toolGrid"></div>
+  </section>
+
+  <section id="prompts">
+    <h2>✨ พรอมต์น่าลอง</h2>
+    <p class="sub">กดคัดลอกแล้วนำไปวางใน AI ได้เลย แก้ข้อความในวงเล็บ [ ] ให้เป็นเรื่องของคุณ</p>
+    <div class="chips" id="pChips"></div>
+    <div class="prompts" id="pGrid"></div>
+  </section>
+
+  <section id="recipe">
+    <h2>🧪 สูตรเขียนพรอมต์ให้ได้ผลดี</h2>
+    <p class="sub">จำง่าย ๆ 5 ส่วน ไม่ต้องครบทุกข้อ แต่ยิ่งมี ผลลัพธ์ยิ่งตรง</p>
+    <div class="recipe">
+      <div><b>1. บทบาท (Role)</b>ให้ AI สวมบทบาท เช่น "คุณเป็นติวเตอร์ภาษาอังกฤษใจดี"</div>
+      <div><b>2. งาน (Task)</b>บอกสิ่งที่ต้องทำชัด ๆ เช่น "สรุปบทความนี้เป็น 5 ข้อ"</div>
+      <div><b>3. บริบท (Context)</b>เล่าสถานการณ์ ผู้อ่านคือใคร เป้าหมายคืออะไร</div>
+      <div><b>4. รูปแบบ (Format)</b>ระบุรูปแบบ เช่น ตาราง ลิสต์ ความยาว ภาษาทางการหรือกันเอง</div>
+      <div><b>5. ข้อจำกัด (Constraints)</b>บอกสิ่งที่ห้ามทำหรือเงื่อนไข เช่น "ห้ามเกิน 200 คำ"</div>
+    </div>
+    <ol class="tips">
+      <li>ให้ตัวอย่าง 1-2 ตัวอย่างของผลลัพธ์ที่ต้องการ AI จะเลียนแบบรูปแบบได้ดีมาก</li>
+      <li>งานใหญ่ให้แบ่งเป็นขั้น ๆ แล้วสั่งทีละขั้น แทนที่จะสั่งทีเดียว</li>
+      <li>ถ้าผลลัพธ์ยังไม่ตรง ให้บอกว่า "ตรงไหนไม่ใช่" แล้วให้แก้ ดีกว่าเริ่มใหม่ทั้งหมด</li>
+      <li>เรื่องข้อเท็จจริง ตัวเลข และแหล่งอ้างอิง ให้ตรวจสอบเองเสมอ AI อาจตอบมั่นใจแต่ผิดได้</li>
+      <li>ลองบอกว่า "ถ้าข้อมูลไม่พอ ให้ถามฉันก่อนตอบ" เพื่อลดการเดา</li>
+    </ol>
+  </section>
+</main>
+<footer>จัดทำเพื่อการเรียนรู้ ไม่ใช่คำแนะนำเชิงพาณิชย์ ชื่อผลิตภัณฑ์เป็นของเจ้าของเครื่องหมายการค้านั้น ๆ</footer>
+
+<script src="js/hub.js"></script>
+<script>
+const CATS = ['ทั้งหมด', 'แชท/เขียน', 'ค้นคว้า/เรียน', 'โค้ด', 'ภาพ', 'เสียง/เพลง', 'วิดีโอ', 'งานนำเสนอ/ออฟฟิศ', 'รันเองบนเครื่อง'];
+
+const TOOLS = [
+  { id: 'chatgpt', url: 'https://chatgpt.com', name: 'ChatGPT', by: 'OpenAI', icon: '💬', color: '#10a37f', cats: ['แชท/เขียน', 'ค้นคว้า/เรียน', 'โค้ด', 'ภาพ'],
+    what: 'ผู้ช่วยแชทอเนกประสงค์ เขียน วิเคราะห์ สรุป แปล เขียนโค้ด อ่านไฟล์และรูป สร้างภาพ คุยด้วยเสียง และค้นเว็บได้',
+    good: ['ฟีเจอร์ครบ ใช้ได้เกือบทุกงานในที่เดียว', 'มี Projects, Custom GPTs และ Canvas สำหรับงานเขียน/โค้ดแบบแก้ไปด้วยกัน', 'สร้างภาพและวิเคราะห์ภาพ/ไฟล์ในแชทเดียวกัน'],
+    caution: ['รุ่นโมเดลและโควตาที่ใช้ได้ขึ้นกับแพ็กเกจ', 'ข้อมูลอ้างอิงควรตรวจสอบเอง'],
+    models: 'มีหลายรุ่น ทั้งรุ่นเร็วสำหรับงานทั่วไป และรุ่นที่ "คิดนาน" (reasoning) สำหรับโจทย์ยาก เลือกได้จากเมนูโมเดลในแอป',
+    cmds: [['Custom Instructions', 'ตั้งค่าล่วงหน้าว่าเราเป็นใคร อยากให้ตอบแบบไหน ไม่ต้องพิมพ์ซ้ำทุกครั้ง'], ['Memory', 'ให้จำข้อมูลที่เรากำหนดข้ามการสนทนา เปิด/ปิดได้ในตั้งค่า'], ['Projects', 'รวมแชทและไฟล์ของงานเดียวกันไว้ที่เดียว พร้อมคำสั่งประจำโปรเจกต์'], ['แนบไฟล์ / รูป', 'กดปุ่มแนบ แล้วสั่ง เช่น "สรุปไฟล์นี้เป็นตาราง"'], ['Deep Research', 'ให้ค้นคว้าหลายแหล่งแล้วเขียนรายงาน (ถ้าแพ็กเกจรองรับ)']] },
+  { id: 'claude', url: 'https://claude.ai', name: 'Claude', by: 'Anthropic', icon: '🧡', color: '#d97757', cats: ['แชท/เขียน', 'ค้นคว้า/เรียน', 'โค้ด'],
+    what: 'ผู้ช่วยแชทที่โดดเด่นเรื่องงานเขียน การอ่านและวิเคราะห์เอกสารยาว ๆ และงานโค้ด มี Claude Code ให้ใช้เขียนโค้ดผ่านเทอร์มินัล',
+    good: ['สำนวนธรรมชาติ เหมาะกับงานเขียนยาว บทความ อีเมล', 'รับเอกสารยาวได้ดี วิเคราะห์ ตรวจ เปรียบเทียบหลายไฟล์', 'Artifacts สร้างหน้าเว็บ แอปเล็ก ๆ หรือเอกสาร แล้วดูผลทันที', 'Claude Code ลงมือแก้โค้ดในโปรเจกต์จริงได้'],
+    caution: ['ฟีเจอร์และโควตาขึ้นกับแพ็กเกจ', 'ข้อเท็จจริงล่าสุดควรตรวจสอบเพิ่ม'],
+    models: 'ตระกูลโมเดลแบ่งเป็นระดับ Haiku (เร็วและประหยัด), Sonnet (สมดุล), Opus (เก่งสุดสำหรับงานซับซ้อน) เลือกตามความยากของงาน',
+    cmds: [['Projects', 'ใส่ไฟล์และคำสั่งประจำโปรเจกต์ไว้ แล้วคุยต่อเนื่อง'], ['Artifacts', 'พิมพ์ว่า "ช่วยสร้างเกม/แอป/หน้าเว็บ..." แล้วจะแสดงผลข้างแชท'], ['claude', 'พิมพ์ในเทอร์มินัลที่โฟลเดอร์โปรเจกต์ เพื่อเริ่ม Claude Code'], ['/init', 'ใน Claude Code: สร้างไฟล์ CLAUDE.md สรุปโปรเจกต์ให้ AI จำ'], ['/clear', 'ล้างบทสนทนาเพื่อเริ่มงานใหม่'], ['/compact', 'ย่อบทสนทนายาว ๆ เพื่อประหยัดพื้นที่'], ['/model', 'สลับรุ่นโมเดลระหว่างทำงาน']] },
+  { id: 'gemini', url: 'https://gemini.google.com', name: 'Gemini', by: 'Google', icon: '✦', color: '#4285f4', cats: ['แชท/เขียน', 'ค้นคว้า/เรียน', 'ภาพ', 'งานนำเสนอ/ออฟฟิศ'],
+    what: 'ผู้ช่วยของ Google รองรับข้อความ รูป เสียง และวิดีโอ เชื่อมกับบริการ Google เช่น Gmail, Drive, Docs, Maps และการค้นหา',
+    good: ['เชื่อมกับแอป Google ที่ใช้อยู่แล้ว สั่งงานกับอีเมล เอกสาร ไฟล์ได้', 'รับข้อมูลยาวและหลายรูปแบบ (ภาพ/เสียง/วิดีโอ) ได้ดี', 'เหมาะกับคนที่ใช้ระบบ Google เป็นหลัก'],
+    caution: ['ฟีเจอร์การเชื่อมแอปขึ้นกับบัญชีและภูมิภาค', 'ตรวจข้อมูลอ้างอิงก่อนใช้'],
+    models: 'มีรุ่นเน้นเร็ว/ประหยัด (Flash) และรุ่นที่ซับซ้อนกว่า (Pro) ชื่อรุ่นอัปเดตบ่อย ดูเมนูเลือกโมเดลในแอป',
+    cmds: [['@ + ชื่อแอป', 'พิมพ์ @ เพื่อเรียกแอป Google มาใช้ในคำสั่ง (ถ้ารองรับในบัญชี)'], ['แนบไฟล์ / รูป / วิดีโอ', 'อัปโหลดแล้วถาม เช่น "ในวิดีโอนี้พูดถึงอะไรบ้าง"'], ['Deep Research', 'ให้วางแผนและค้นหลายแหล่ง แล้วเขียนรายงาน (ถ้ารองรับ)'], ['Gemini Live', 'คุยด้วยเสียงแบบต่อเนื่อง']] },
+  { id: 'copilot', url: 'https://copilot.microsoft.com', name: 'Microsoft Copilot', by: 'Microsoft', icon: '🪟', color: '#0f6cbd', cats: ['แชท/เขียน', 'งานนำเสนอ/ออฟฟิศ', 'โค้ด'],
+    what: 'ผู้ช่วยที่ฝังใน Windows และแอป Microsoft 365 (Word, Excel, PowerPoint, Outlook, Teams) ช่วยร่างเอกสาร สรุปประชุม และวิเคราะห์ตาราง',
+    good: ['อยู่ในแอปออฟฟิศที่ใช้ทุกวัน ไม่ต้องสลับหน้าจอ', 'สรุปประชุม Teams และอีเมลยาว ๆ', 'ช่วยสร้างสูตรและวิเคราะห์ข้อมูลใน Excel'],
+    caution: ['ฟีเจอร์ในแอปออฟฟิศมักต้องมีสิทธิ์ใช้งานเพิ่ม', 'ผลลัพธ์ขึ้นกับข้อมูลและสิทธิ์ในองค์กร'],
+    models: 'ใช้โมเดลจากหลายผู้พัฒนาเบื้องหลัง แล้วแต่ผลิตภัณฑ์และเวอร์ชัน ผู้ใช้ทั่วไปมักไม่ต้องเลือกเอง',
+    cmds: [['Word', '"ร่างจดหมายเสนอราคาจากข้อมูลในไฟล์นี้"'], ['Excel', '"สรุปยอดขายรายเดือนและสร้างกราฟ"'], ['PowerPoint', '"สร้างสไลด์ 8 หน้าจากเอกสาร Word นี้"'], ['Teams', '"สรุปการประชุมนี้ พร้อมรายการที่ต้องทำและผู้รับผิดชอบ"']] },
+  { id: 'perplexity', url: 'https://www.perplexity.ai', name: 'Perplexity', by: 'Perplexity AI', icon: '🔎', color: '#20808d', cats: ['ค้นคว้า/เรียน'],
+    what: 'เครื่องมือค้นหาที่ตอบเป็นภาษาธรรมชาติ พร้อมลิงก์แหล่งที่มาให้ตรวจสอบต่อได้',
+    good: ['ตอบพร้อมอ้างอิง เหมาะกับการหาข้อมูลและเช็กข่าว', 'มีโหมดค้นเจาะลึกและโหมดเน้นแหล่งวิชาการ', 'Spaces รวมการค้นคว้าเรื่องเดียวกันไว้ที่เดียว'],
+    caution: ['ควรกดเข้าไปอ่านแหล่งที่มาจริง ไม่ใช่เชื่อสรุปอย่างเดียว', 'ฟีเจอร์บางอย่างต้องใช้แพ็กเกจเสียเงิน'],
+    models: 'บางแพ็กเกจให้เลือกโมเดลเบื้องหลังได้หลายตัว',
+    cmds: [['Pro Search / Deep Research', 'เลือกโหมดค้นละเอียดสำหรับคำถามซับซ้อน'], ['Focus: Academic', 'จำกัดแหล่งให้เป็นงานวิชาการ (ชื่อโหมดอาจเปลี่ยน)'], ['Spaces', 'สร้างพื้นที่เก็บการค้นคว้าและตั้งคำสั่งประจำ'], ['ถามต่อเนื่อง', 'ถามต่อจากคำตอบเดิมเพื่อเจาะประเด็น']] },
+  { id: 'notebooklm', url: 'https://notebooklm.google.com', name: 'NotebookLM', by: 'Google', icon: '📓', color: '#7c4dff', cats: ['ค้นคว้า/เรียน'],
+    what: 'ใส่เอกสารของเราเอง (PDF, ลิงก์, วิดีโอ YouTube, ข้อความ) แล้วถามตอบ สรุป ติวสอบ โดยตอบจากแหล่งที่ใส่และอ้างอิงตำแหน่งให้',
+    good: ['ตอบจากเอกสารของเราเป็นหลัก ลดการมั่วข้อมูล', 'Audio Overview แปลงเอกสารเป็นบทสนทนาแบบพอดแคสต์', 'สร้างสรุป ไทม์ไลน์ คำถามทบทวนจากแหล่งทั้งหมด'],
+    caution: ['คุณภาพขึ้นกับคุณภาพของแหล่งที่ใส่', 'ภาษาและฟีเจอร์ที่รองรับอาจต่างกันตามช่วงเวลา'],
+    models: 'ไม่ต้องเลือกโมเดล ใช้งานผ่านเว็บ/แอปของ Google',
+    cmds: [['เพิ่มแหล่งข้อมูล', 'อัปโหลด PDF หรือวางลิงก์/วิดีโอ แล้วถามได้เลย'], ['Audio Overview', 'สร้างบทสนทนาเสียงสรุปเนื้อหา'], ['Study guide / FAQ', 'ให้สร้างคู่มือเรียนและคำถามที่พบบ่อยจากแหล่งข้อมูล']] },
+  { id: 'coding', url: 'https://cursor.com', name: 'Cursor / GitHub Copilot', by: 'Anysphere / GitHub', icon: '⌨️', color: '#6e7681', cats: ['โค้ด'],
+    what: 'ตัวช่วยเขียนโค้ดที่อยู่ในตัวแก้ไขโค้ด ช่วยเติมโค้ด อธิบาย แก้บั๊ก และแก้หลายไฟล์พร้อมกัน',
+    good: ['เติมโค้ดอัตโนมัติขณะพิมพ์', 'ถามเกี่ยวกับโค้ดในโปรเจกต์ได้โดยตรง', 'ช่วยเขียนเทสต์ รีแฟกเตอร์ และอธิบายโค้ดเก่า'],
+    caution: ['ต้องอ่านและทดสอบโค้ดที่ AI เขียนทุกครั้ง', 'ระวังการส่งโค้ดหรือข้อมูลลับขององค์กรออกไป'],
+    models: 'เลือกโมเดลเบื้องหลังได้ในหลายแพ็กเกจ',
+    cmds: [['Tab', 'ยอมรับโค้ดที่ AI เสนอเติม'], ['Chat', 'ถามเกี่ยวกับโค้ด เช่น "ฟังก์ชันนี้ทำงานอย่างไร"'], ['Agent / Edit', 'สั่งให้แก้หลายไฟล์ เช่น "เพิ่มระบบล็อกอินให้โปรเจกต์นี้"'], ['/tests', 'ใน Copilot Chat: ให้สร้างเทสต์ให้โค้ดที่เลือก']] },
+  { id: 'midjourney', url: 'https://www.midjourney.com', name: 'Midjourney', by: 'Midjourney', icon: '🎨', color: '#e84a8a', cats: ['ภาพ'],
+    what: 'สร้างภาพศิลป์สวยงามจากข้อความ โดดเด่นเรื่องสไตล์ ภาพประกอบ คอนเซ็ปต์อาร์ต',
+    good: ['ภาพมีความเป็นศิลปะและองค์ประกอบสวย', 'ควบคุมสไตล์ด้วยพารามิเตอร์ได้ละเอียด', 'มี /describe ช่วยแกะพรอมต์จากภาพที่ชอบ'],
+    caution: ['ตัวหนังสือในภาพอาจเพี้ยน', 'ตรวจเงื่อนไขการใช้ภาพเชิงพาณิชย์และลิขสิทธิ์ก่อนใช้งาน'],
+    models: 'มีหลายเวอร์ชัน เลือกด้วยพารามิเตอร์ --v ตามด้วยหมายเลขเวอร์ชันที่ต้องการ',
+    cmds: [['/imagine prompt: ...', 'สั่งสร้างภาพ (ใน Discord) หรือพิมพ์พรอมต์บนเว็บ'], ['--ar 16:9', 'กำหนดสัดส่วนภาพ เช่น 1:1, 4:5, 16:9'], ['--style raw', 'ลดการแต่งสไตล์ ให้ใกล้พรอมต์มากขึ้น'], ['--s 0 ถึง 1000', 'ระดับความจัดจ้านของสไตล์ (stylize)'], ['--chaos', 'เพิ่มความหลากหลายของผลลัพธ์'], ['--no ...', 'บอกสิ่งที่ไม่ต้องการในภาพ'], ['--seed', 'ล็อกเมล็ดสุ่มเพื่อทำซ้ำผลลัพธ์ใกล้เคียงเดิม'], ['/describe', 'อัปโหลดภาพแล้วให้เสนอพรอมต์'], ['/blend', 'ผสมหลายภาพเข้าด้วยกัน']] },
+  { id: 'sd', url: 'https://stability.ai', name: 'Stable Diffusion / FLUX', by: 'โอเพนซอร์ส (หลายผู้พัฒนา)', icon: '🧩', color: '#8a63d2', cats: ['ภาพ', 'รันเองบนเครื่อง'],
+    what: 'โมเดลสร้างภาพแบบเปิด รันบนเครื่องตัวเองหรือผ่านบริการได้ ปรับแต่งได้ลึก',
+    good: ['ควบคุมได้ละเอียด ใช้ ControlNet, LoRA ปรับท่าทาง/สไตล์', 'รันบนเครื่องตัวเอง ข้อมูลไม่ต้องออกไปไหน', 'ชุมชนใหญ่ มีโมเดลสไตล์ให้เลือกมาก'],
+    caution: ['ต้องมีการ์ดจอที่เหมาะสมหรือใช้บริการคลาวด์', 'ตั้งค่ายุ่งกว่าบริการสำเร็จรูป ตรวจสัญญาอนุญาตของแต่ละโมเดล'],
+    models: 'มีหลายตระกูลและหลายเวอร์ชัน ตรวจสัญญาอนุญาตของโมเดลก่อนใช้เชิงพาณิชย์',
+    cmds: [['ComfyUI / AUTOMATIC1111', 'หน้าจอยอดนิยมสำหรับรันโมเดลภาพบนเครื่อง'], ['Negative prompt', 'ช่องบอกสิ่งที่ไม่ต้องการในภาพ'], ['LoRA', 'ไฟล์เล็กที่เพิ่มสไตล์หรือตัวละครเฉพาะให้โมเดล']] },
+  { id: 'suno', url: 'https://suno.com', name: 'Suno', by: 'Suno', icon: '🎵', color: '#f5a623', cats: ['เสียง/เพลง'],
+    what: 'สร้างเพลงครบทั้งดนตรีและเสียงร้องจากข้อความ ระบุแนวเพลงและเนื้อร้องได้',
+    good: ['ได้เพลงที่ฟังได้ทันทีใน 1-2 นาที', 'ใส่เนื้อเพลงเองหรือให้ AI แต่งได้', 'ควบคุมโครงสร้างเพลงด้วยแท็ก'],
+    caution: ['ตรวจเงื่อนไขการใช้งานเชิงพาณิชย์และลิขสิทธิ์', 'อย่าเลียนเสียงศิลปินจริงโดยไม่ได้รับอนุญาต'],
+    models: 'มีหลายเวอร์ชันของโมเดล เลือกได้ในหน้าสร้างเพลง',
+    cmds: [['Style of music', 'ช่องใส่แนวเพลง เช่น "Thai luk thung, acoustic guitar, warm female vocal"'], ['[Verse] [Chorus] [Bridge]', 'แท็กในเนื้อเพลงเพื่อบอกโครงสร้างท่อน'], ['Instrumental', 'เลือกเพื่อสร้างเพลงบรรเลงไม่มีเสียงร้อง']] },
+  { id: 'eleven', url: 'https://elevenlabs.io', name: 'ElevenLabs', by: 'ElevenLabs', icon: '🎙️', color: '#444b5a', cats: ['เสียง/เพลง'],
+    what: 'สร้างเสียงพูดสมจริงจากข้อความ (Text-to-Speech) พากย์เสียงหลายภาษา และสร้างเสียงเฉพาะบุคคลเมื่อได้รับอนุญาต',
+    good: ['เสียงพูดสมจริง เหมาะกับพากย์วิดีโอและหนังสือเสียง', 'เลือกเสียงและปรับน้ำเสียงได้', 'รองรับหลายภาษา'],
+    caution: ['ห้ามโคลนเสียงคนอื่นโดยไม่ได้รับอนุญาต', 'ตรวจเงื่อนไขการใช้งานเชิงพาณิชย์'],
+    models: 'มีโมเดลหลายตัวสำหรับความเร็วและคุณภาพต่างกัน',
+    cmds: [['Text to Speech', 'วางสคริปต์ เลือกเสียง แล้วสร้างไฟล์เสียง'], ['Voice Library', 'เลือกเสียงสำเร็จรูปตามเพศ อายุ สำเนียง'], ['Dubbing', 'แปลและพากย์วิดีโอเป็นภาษาอื่น']] },
+  { id: 'video', url: 'https://runwayml.com', name: 'Runway / Sora / Veo', by: 'Runway / OpenAI / Google', icon: '🎬', color: '#e2483d', cats: ['วิดีโอ'],
+    what: 'สร้างวิดีโอสั้นจากข้อความหรือภาพนิ่ง ใช้ทำคลิปประกอบ มู้ดบอร์ด และงานครีเอทีฟ',
+    good: ['Text-to-video: เขียนฉากแล้วได้คลิปสั้น', 'Image-to-video: ทำภาพนิ่งให้เคลื่อนไหว', 'เหมาะกับงานต้นแบบความคิดอย่างรวดเร็ว'],
+    caution: ['ความยาวคลิปและคุณภาพจำกัด ผลลัพธ์ต้องสุ่มลองหลายครั้ง', 'ความพร้อมใช้งานและราคาต่างกันตามผู้ให้บริการและภูมิภาค'],
+    models: 'แต่ละเจ้ามีโมเดลของตัวเอง ตรวจความสามารถล่าสุดจากเว็บทางการ',
+    cmds: [['บอกกล้อง', 'เช่น "close-up", "slow dolly in", "aerial shot"'], ['บอกแสงและอารมณ์', 'เช่น "golden hour", "moody lighting"'], ['Image-to-video', 'อัปโหลดภาพ แล้วอธิบายการเคลื่อนไหวที่ต้องการ']] },
+  { id: 'gamma', url: 'https://gamma.app', name: 'Gamma / Canva AI', by: 'Gamma / Canva', icon: '📊', color: '#b455e8', cats: ['งานนำเสนอ/ออฟฟิศ'],
+    what: 'สร้างสไลด์ เอกสาร และเว็บเพจแบบเร็ว จากหัวข้อหรือโครงร่างที่เราให้',
+    good: ['พิมพ์หัวข้อ ได้สไลด์พร้อมเลย์เอาต์และภาพ', 'ปรับธีมและแก้ไขต่อได้ง่าย', 'เหมาะกับงานด่วนหรือร่างแรก'],
+    caution: ['ต้องตรวจเนื้อหาและข้อเท็จจริงเอง', 'ควรปรับให้เข้ากับแบรนด์หรือรูปแบบของหน่วยงาน'],
+    models: 'ไม่ต้องเลือกโมเดล ใช้งานผ่านเว็บ',
+    cmds: [['Generate', 'ใส่หัวข้อหรือโครงร่าง แล้วเลือกจำนวนหน้า'], ['Import', 'นำเอกสารที่มีอยู่มาแปลงเป็นสไลด์'], ['สั่งแก้ด้วยข้อความ', 'เช่น "ทำให้หน้านี้สั้นลงและเพิ่มตารางเปรียบเทียบ"']] },
+  { id: 'local', url: 'https://ollama.com', name: 'โมเดลเปิด (Llama, Qwen, Mistral, DeepSeek)', by: 'ชุมชน/หลายผู้พัฒนา', icon: '🏠', color: '#3a8b6e', cats: ['แชท/เขียน', 'โค้ด', 'รันเองบนเครื่อง'],
+    what: 'โมเดลภาษาแบบเปิดที่ดาวน์โหลดมารันบนเครื่องตัวเอง ใช้งานแบบออฟไลน์ได้ ข้อมูลไม่ต้องส่งออกไปภายนอก',
+    good: ['ความเป็นส่วนตัวสูง รันในเครื่องเอง', 'ไม่มีค่าใช้จ่ายรายเดือนต่อการใช้งาน (ใช้ทรัพยากรเครื่อง)', 'ปรับแต่งและต่อยอดเองได้'],
+    caution: ['ต้องมีเครื่องที่แรงพอ (แรม/การ์ดจอ)', 'โมเดลเล็กอาจสู้โมเดลบนคลาวด์ในงานยากไม่ได้', 'ตรวจสัญญาอนุญาตของแต่ละโมเดล'],
+    models: 'เลือกขนาดโมเดลให้เหมาะกับเครื่อง ยิ่งใหญ่ยิ่งฉลาดแต่ใช้ทรัพยากรมาก',
+    cmds: [['ollama run <ชื่อโมเดล>', 'ดาวน์โหลดและเริ่มคุยกับโมเดลใน Ollama'], ['ollama list', 'ดูโมเดลที่ติดตั้งอยู่'], ['ollama pull <ชื่อโมเดล>', 'ดาวน์โหลดโมเดลล่วงหน้า'], ['LM Studio', 'โปรแกรมหน้าต่างสำหรับดาวน์โหลดและคุยกับโมเดลบนเครื่อง']] }
+];
+
+const TASKS = [
+  { t: '✍️ เขียนบทความ/รายงานยาว', r: [['claude', 'สำนวนธรรมชาติและรับเอกสารยาวได้ดี'], ['chatgpt', 'มี Canvas แก้ไขร่วมกัน ฟีเจอร์ครบ'], ['gemini', 'ดึงข้อมูลจากไฟล์ใน Google Drive ได้สะดวก']] },
+  { t: '🔎 ค้นคว้าพร้อมแหล่งอ้างอิง', r: [['perplexity', 'ตอบพร้อมลิงก์ที่มาให้ตรวจต่อ'], ['gemini', 'มีโหมดค้นเจาะลึก และเชื่อมกับการค้นหาของ Google'], ['chatgpt', 'มีโหมด Deep Research (ตามแพ็กเกจ)']] },
+  { t: '📖 อ่านและติวจากเอกสาร/PDF ของตัวเอง', r: [['notebooklm', 'ตอบจากแหล่งที่เราใส่เท่านั้น พร้อมอ้างอิง'], ['claude', 'เก่งกับเอกสารยาวและการวิเคราะห์'], ['gemini', 'รับหลายไฟล์/หลายรูปแบบ']] },
+  { t: '💻 เขียนโค้ด / ทำแอปหรือเกม', r: [['claude', 'Artifacts ดูผลทันที และ Claude Code แก้ในโปรเจกต์จริง'], ['coding', 'ช่วยในตัวแก้ไขโค้ดขณะเขียน'], ['chatgpt', 'อธิบายโค้ดและแก้บั๊กได้ดีในแชท']] },
+  { t: '📊 ทำสไลด์นำเสนอ', r: [['gamma', 'พิมพ์หัวข้อ ได้สไลด์ทันที'], ['copilot', 'ถ้าใช้ PowerPoint อยู่แล้ว'], ['gemini', 'ช่วยร่างโครงและเนื้อหา']] },
+  { t: '🗂️ งาน Excel / เอกสารออฟฟิศ', r: [['copilot', 'ฝังอยู่ในแอป Microsoft 365'], ['gemini', 'ถ้าใช้ Google Sheets/Docs'], ['chatgpt', 'ช่วยเขียนสูตรและอธิบายข้อมูลในแชท']] },
+  { t: '🎨 สร้างภาพสวย ๆ', r: [['midjourney', 'ภาพศิลป์และสไตล์โดดเด่น'], ['chatgpt', 'สร้างภาพในแชท แก้ภาพด้วยการคุยต่อได้'], ['sd', 'ถ้าต้องการควบคุมละเอียดหรือรันเอง']] },
+  { t: '🎵 แต่งเพลง', r: [['suno', 'ได้เพลงครบเสียงร้องและดนตรี'], ['chatgpt', 'ช่วยแต่งเนื้อร้องก่อนนำไปใส่']] },
+  { t: '🎬 ทำวิดีโอสั้น', r: [['video', 'text-to-video และ image-to-video'], ['eleven', 'ทำเสียงพากย์ประกอบ']] },
+  { t: '🎙️ ทำเสียงพากย์', r: [['eleven', 'เสียงพูดสมจริง หลายภาษา']] },
+  { t: '🔒 ข้อมูลเป็นความลับ / อยากใช้ออฟไลน์', r: [['local', 'รันบนเครื่องตัวเอง ข้อมูลไม่ออกไปภายนอก'], ['sd', 'ถ้าเป็นงานภาพ']] },
+  { t: '🌐 แปลและฝึกภาษา', r: [['chatgpt', 'คุยเสียงและสวมบทบาทฝึกสนทนาได้'], ['claude', 'แปลโดยรักษาน้ำเสียงได้ดี'], ['gemini', 'แปลจากรูป/เสียงได้สะดวก']] }
+];
+
+const PROMPTS = [
+  { tag: 'เรียนรู้', title: 'ติวเตอร์ส่วนตัว', tool: 'ทุกตัว', text: 'คุณเป็นติวเตอร์ใจดี ฉันเป็นนักเรียนมัธยมปลาย อยากเข้าใจเรื่อง [หัวข้อ]\nอธิบายแบบเปรียบเทียบกับสิ่งใกล้ตัว ทีละขั้น แล้วถามฉัน 3 ข้อเพื่อเช็กความเข้าใจ รอให้ฉันตอบก่อนแล้วค่อยเฉลย' },
+  { tag: 'เรียนรู้', title: 'อธิบายให้เด็ก 10 ขวบฟัง', tool: 'ทุกตัว', text: 'อธิบายเรื่อง [หัวข้อ] ให้เด็ก 10 ขวบเข้าใจ ใช้ตัวอย่างในชีวิตประจำวัน ไม่เกิน 150 คำ\nแล้วบอกว่าคนมักเข้าใจผิดเรื่องนี้ตรงไหน' },
+  { tag: 'เรียนรู้', title: 'ทำข้อสอบจำลอง', tool: 'ทุกตัว', text: 'จากเนื้อหาที่ฉันแนบ สร้างข้อสอบปรนัย 10 ข้อ ระดับปานกลาง พร้อมเฉลยและคำอธิบายสั้น ๆ ว่าทำไมข้อที่ผิดจึงผิด' },
+  { tag: 'การทำงาน', title: 'สรุปประชุมเป็นรายการที่ต้องทำ', tool: 'Copilot / ChatGPT / Claude', text: 'นี่คือบันทึกการประชุม: [วางข้อความ]\nสรุปเป็น 1) ประเด็นสำคัญ 3 ข้อ 2) การตัดสินใจ 3) ตาราง รายการที่ต้องทำ | ผู้รับผิดชอบ | กำหนดส่ง' },
+  { tag: 'การทำงาน', title: 'เขียนอีเมลให้สุภาพและกระชับ', tool: 'ทุกตัว', text: 'ช่วยเขียนอีเมลถึง [ผู้รับ] เรื่อง [จุดประสงค์] น้ำเสียงสุภาพแต่ตรงประเด็น ไม่เกิน 120 คำ ให้ 2 เวอร์ชัน: ทางการ และกึ่งทางการ' },
+  { tag: 'การทำงาน', title: 'ซ้อมสัมภาษณ์งาน', tool: 'ChatGPT / Claude', text: 'คุณเป็นผู้สัมภาษณ์ตำแหน่ง [ตำแหน่ง] ที่บริษัท [ประเภทธุรกิจ] ถามฉันทีละข้อ รอคำตอบ แล้วให้คะแนน 1-5 พร้อมข้อเสนอแนะ ก่อนถามข้อถัดไป' },
+  { tag: 'การเขียน', title: 'บรรณาธิการสายเข้ม', tool: 'Claude / ChatGPT', text: 'ทำตัวเป็นบรรณาธิการที่เข้มงวดแต่เป็นมิตร อ่านงานเขียนนี้แล้วบอก 5 จุดที่ควรแก้ที่สุด พร้อมตัวอย่างประโยคก่อน/หลังแก้\n\n[วางงานเขียน]' },
+  { tag: 'การเขียน', title: 'ถามกลับก่อนเขียน', tool: 'ทุกตัว', text: 'ฉันอยากให้ช่วยเขียน [งานที่ต้องการ] ก่อนเริ่ม ให้ถามฉันกลับ 3-5 ข้อที่จำเป็นที่สุดเพื่อให้ได้งานที่ตรงใจ แล้วค่อยเขียน' },
+  { tag: 'ค้นคว้า', title: 'เปรียบเทียบพร้อมแหล่งอ้างอิง', tool: 'Perplexity / Gemini', text: 'เปรียบเทียบ [A] กับ [B] ในรูปตาราง ด้านความสามารถ ข้อดี ข้อเสีย และเหมาะกับใคร พร้อมแหล่งอ้างอิงและปีที่เผยแพร่ หากข้อมูลขัดแย้งกันให้ระบุไว้' },
+  { tag: 'ค้นคว้า', title: 'ไทม์ไลน์จากแหล่งข้อมูล', tool: 'NotebookLM', text: 'จากแหล่งข้อมูลทั้งหมดที่ฉันเพิ่ม สร้างไทม์ไลน์เหตุการณ์สำคัญเรียงตามเวลา แต่ละรายการระบุแหล่งที่มา และแยกเรื่องที่แหล่งข้อมูลเห็นไม่ตรงกัน' },
+  { tag: 'โค้ด', title: 'สร้างเกมเล็ก ๆ ไฟล์เดียว', tool: 'Claude / ChatGPT', text: 'สร้างเกม [ประเภทเกม] ใน HTML ไฟล์เดียว เล่นได้ทั้งมือถือและคอมพิวเตอร์ มีคะแนนสูงสุดเก็บไว้ มีเสียงเบา ๆ และหน้าตาสวยงาม ให้โค้ดทั้งหมดในครั้งเดียว' },
+  { tag: 'โค้ด', title: 'ตรวจโค้ดและหาบั๊ก', tool: 'ทุกตัว', text: 'ช่วยรีวิวโค้ดนี้: 1) หาบั๊กที่น่าจะเกิดขึ้น 2) จุดที่เสี่ยงด้านความปลอดภัย 3) ข้อเสนอให้อ่านง่ายขึ้น เรียงตามความสำคัญ\n\n[วางโค้ด]' },
+  { tag: 'โค้ด', title: 'อธิบายโค้ดทีละบรรทัด', tool: 'ทุกตัว', text: 'อธิบายโค้ดนี้ให้คนเพิ่งเริ่มเขียนโปรแกรมเข้าใจ ทีละส่วน และบอกว่าถ้าแก้บรรทัดไหนจะเกิดอะไรขึ้น\n\n[วางโค้ด]' },
+  { tag: 'ภาพ/เสียง', title: 'ภาพขนมไทยสไตล์โฆษณา', tool: 'Midjourney', text: '/imagine prompt: Thai dessert thong yip golden flower-shaped sweets on a traditional benjarong porcelain plate, warm soft window light, shallow depth of field, food photography --ar 4:5 --style raw' },
+  { tag: 'ภาพ/เสียง', title: 'เพลงลูกทุ่งอบอุ่น', tool: 'Suno', text: 'Style: Thai luk thung, warm acoustic guitar, gentle fiddle, female vocal, nostalgic\nLyrics:\n[Verse]\n[เนื้อเพลงท่อนแรก]\n[Chorus]\n[เนื้อเพลงท่อนฮุก]' },
+  { tag: 'คิดวิเคราะห์', title: 'ให้ AI ค้านไอเดียเรา', tool: 'ทุกตัว', text: 'นี่คือไอเดียของฉัน: [ไอเดีย]\nคุณเป็นนักวิจารณ์ จงหา 5 จุดอ่อนที่เป็นไปได้ ความเสี่ยง และสมมติฐานที่อาจผิด แล้วเสนอวิธีลดความเสี่ยงแต่ละข้อ' },
+  { tag: 'คิดวิเคราะห์', title: 'ตัดสินใจเลือก 2 ทางเลือก', tool: 'ทุกตัว', text: 'ฉันลังเลระหว่าง [ตัวเลือก A] กับ [ตัวเลือก B] ปัจจัยที่สำคัญกับฉันคือ [ปัจจัย] ช่วยทำตารางให้คะแนนถ่วงน้ำหนัก และถามคำถามที่ฉันควรถามตัวเองก่อนตัดสินใจ' },
+  { tag: 'สนุก', title: 'สวมบทบาทฝึกภาษา', tool: 'ChatGPT / Gemini', text: 'เราจะสวมบทบาทเป็นคนสั่งอาหารในร้านที่ [ประเทศ] คุณเป็นพนักงาน พูดภาษา [ภาษา] ระดับ [ระดับ] ถ้าฉันพูดผิดให้แก้ท้ายประโยคสั้น ๆ แล้วคุยต่อ' },
+  { tag: 'สนุก', title: 'ทายเรื่องรอบตัวแบบ 20 คำถาม', tool: 'ทุกตัว', text: 'มาเล่น 20 คำถามกัน ฉันคิดชื่อสัตว์ไว้หนึ่งตัว คุณถามฉันได้ทีละข้อแบบตอบ ใช่/ไม่ใช่ แล้วลองทายให้ได้ภายใน 20 ข้อ' }
+];
+
+const $ = id => document.getElementById(id);
+const toolById = id => TOOLS.find(t => t.id === id);
+
+// ---- task picker ----
+let task = 0;
+function drawTasks() {
+  $('taskChips').innerHTML = '';
+  TASKS.forEach((t, i) => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = t.t; b.setAttribute('aria-pressed', i === task);
+    b.onclick = () => { task = i; drawTasks(); }; $('taskChips').appendChild(b);
+  });
+  const box = $('rec'); box.innerHTML = '';
+  TASKS[task].r.forEach(([id, why], i) => {
+    const tl = toolById(id), d = document.createElement('div'); d.className = 'recItem';
+    d.innerHTML = '<div class="rank">' + (i + 1) + '</div><div><b></b> <span class="tm"></span><div class="why"></div><a>ดูวิธีสั่งและคำสั่ง ↓</a></div>';
+    d.querySelector('b').textContent = tl.name; d.querySelector('.tm').textContent = '· ' + tl.by; d.querySelector('.why').textContent = 'เพราะ: ' + why;
+    d.querySelector('a').onclick = () => openTool(id);
+    box.appendChild(d);
+  });
+}
+function openTool(id) {
+  curCat = 'ทั้งหมด'; $('q').value = ''; drawTools();
+  const el = document.getElementById('tool-' + id); if (el) { el.open = true; el.scrollIntoView({ block: 'start' }); }
+}
+
+// ---- tools ----
+let curCat = 'ทั้งหมด';
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function list(items) { const ul = el('ul'); items.forEach(i => ul.appendChild(el('li', null, i))); return ul; }
+function box(title, node, wide) { const b = el('div', 'box' + (wide ? ' wide' : '')); b.appendChild(el('h4', null, title)); b.appendChild(node); return b; }
+function drawTools() {
+  $('catChips').innerHTML = '';
+  CATS.forEach(c => {
+    const b = el('button', 'chip', c); b.setAttribute('aria-pressed', c === curCat);
+    b.onclick = () => { curCat = c; drawTools(); }; $('catChips').appendChild(b);
+  });
+  const kw = $('q').value.trim().toLowerCase();
+  const rows = TOOLS.filter(t => (curCat === 'ทั้งหมด' || t.cats.includes(curCat)) &&
+    (!kw || (t.name + t.by + t.what + t.cats.join(' ') + t.cmds.map(c => c.join(' ')).join(' ')).toLowerCase().includes(kw)));
+  const grid = $('toolGrid'); grid.innerHTML = '';
+  if (!rows.length) { grid.appendChild(el('div', 'empty', 'ไม่พบเครื่องมือที่ตรงกับคำค้นหา')); return; }
+  rows.forEach(t => {
+    const d = el('details', 'tool'); d.id = 'tool-' + t.id;
+    const s = el('summary'); const logo = el('div', 'logo', t.icon); logo.style.background = t.color;
+    const info = el('div'); info.appendChild(el('div', 'tn', t.name)); info.appendChild(el('div', 'tm', t.by));
+    const tags = el('div', 'tags'); t.cats.forEach(c => tags.appendChild(el('span', 'tag', c))); info.appendChild(tags);
+    s.append(logo, info); d.appendChild(s);
+    const body = el('div', 'body');
+    body.appendChild(box('ทำอะไรได้', el('div', null, t.what)));
+    body.appendChild(box('จุดเด่น', list(t.good)));
+    body.appendChild(box('ข้อควรระวัง', list(t.caution)));
+    body.appendChild(box('เรื่องโมเดล', el('div', null, t.models)));
+    const link = el('a', null, t.url.replace('https://', '') + ' ↗'); link.href = t.url; link.target = '_blank'; link.rel = 'noopener'; link.className = 'olink';
+    body.appendChild(box('เว็บไซต์ทางการ (เช็กรุ่นและราคาล่าสุดที่นี่)', link));
+    const cm = el('div');
+    t.cmds.forEach(([c, desc]) => { const r = el('div', 'cmd'); r.appendChild(el('code', null, c)); r.appendChild(el('span', null, desc)); cm.appendChild(r); });
+    body.appendChild(box('คำสั่งและวิธีใช้', cm, true));
+    const rel = PROMPTS.filter(p => p.tool.includes(t.name.split(' ')[0]));
+    if (rel.length) body.appendChild(box('พรอมต์ที่เหมาะกับตัวนี้', list(rel.map(p => p.title)), true));
+    d.appendChild(body); grid.appendChild(d);
+  });
+}
+$('q').addEventListener('input', drawTools);
+
+// ---- prompts ----
+let pTag = 'ทั้งหมด';
+function drawPrompts() {
+  const tags = ['ทั้งหมด', ...new Set(PROMPTS.map(p => p.tag))];
+  $('pChips').innerHTML = '';
+  tags.forEach(t => { const b = el('button', 'chip', t); b.setAttribute('aria-pressed', t === pTag); b.onclick = () => { pTag = t; drawPrompts(); }; $('pChips').appendChild(b); });
+  const g = $('pGrid'); g.innerHTML = '';
+  PROMPTS.filter(p => pTag === 'ทั้งหมด' || p.tag === pTag).forEach(p => {
+    const c = el('div', 'pcard'); c.appendChild(el('h3', null, p.title));
+    c.appendChild(el('pre', null, p.text));
+    const r = el('div', 'row'); r.appendChild(el('span', 'tm', 'เหมาะกับ: ' + p.tool));
+    const b = el('button', 'copy', 'คัดลอก');
+    b.onclick = async () => {
+      try { await navigator.clipboard.writeText(p.text); }
+      catch (e) { const ta = document.createElement('textarea'); ta.value = p.text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) {} ta.remove(); }
+      if (window.Hub) Hub.stat('guide.copied', 1, 'add');
+      b.textContent = 'คัดลอกแล้ว ✓'; b.classList.add('done'); setTimeout(() => { b.textContent = 'คัดลอก'; b.classList.remove('done'); }, 1500);
+    };
+    r.appendChild(b); c.appendChild(r); g.appendChild(c);
+  });
+}
+drawTasks(); drawTools(); drawPrompts();
+if (window.Hub) { Hub.visit('guide'); Hub.mountMusic(); }
+</script>
+</body>
+</html>

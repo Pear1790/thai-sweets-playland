@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ครัวขนมไทย 3D</title>
+<meta name="theme-color" content="#5a2c10">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link href="vendor/fonts/kanit.css" rel="stylesheet">
+<style>
+  :root{--gold:#ffe27a;--ink:#4a2a10;--paper1:#fff3d1;--paper2:#f1d595;--edge:#c8861f}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:Kanit,"Noto Sans Thai",system-ui,sans-serif;color:#fff;
+    background:radial-gradient(900px 500px at 50% 10%,#fff1d6 0,#f3c98f 45%,#b8723a 100%)}
+  canvas{display:block;touch-action:none}
+  .hidden{display:none!important}
+  .ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+  .ui > *{pointer-events:auto}
+  .btn{display:block;width:min(300px,80vw);margin:10px auto 0;padding:13px;border:2px solid #fff;border-radius:99px;font:700 20px Kanit,sans-serif;color:#5a2c00;cursor:pointer;
+    background:linear-gradient(#ffe27a,#ffa41f 60%,#d27d00);box-shadow:0 5px 0 #8a4b00,0 10px 22px rgba(0,0,0,.25)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 #8a4b00}
+  .btn.alt{background:linear-gradient(#a9e4ff,#4cb8ff);box-shadow:0 5px 0 #1a6fa8;font-size:17px}
+  .card{width:min(460px,calc(100% - 24px));padding:18px 20px;border-radius:24px;background:linear-gradient(var(--paper1),var(--paper2));color:var(--ink);border:4px solid var(--edge);box-shadow:0 14px 30px rgba(0,0,0,.3)}
+  h1{margin:0;text-align:center;font-size:clamp(36px,8vw,60px);color:#fff;text-shadow:0 4px 0 #7a3a00,0 8px 22px rgba(0,0,0,.25);line-height:1.05}
+  h1 span{color:var(--gold)}
+  h2{margin:0 0 6px;color:#7a3a00;font-size:28px;text-align:center}
+  /* menu */
+  #menu{justify-content:space-between;padding:4vh 12px 3vh;pointer-events:none}
+  .recipes{display:grid;gap:10px;width:min(460px,calc(100vw - 24px))}
+  .rc{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:20px;background:linear-gradient(var(--paper1),var(--paper2));color:var(--ink);border:3px solid var(--edge);cursor:pointer;text-align:left;font:inherit;box-shadow:0 8px 18px rgba(0,0,0,.2)}
+  .rc:hover{transform:translateY(-2px)}
+  .rc .em{font-size:36px;flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:#fff8e6}
+  .rc b{display:block;font-size:20px;color:#7a3a00}
+  .rc small{font-size:13px;line-height:1.35;display:block}
+  .rc .st{margin-left:auto;font-size:18px;color:#d2760a;flex:none}
+  .home{color:#fff;text-decoration:none;font-size:14px;padding:6px 12px;border-radius:99px;background:rgba(60,25,0,.45)}
+  /* intro */
+  #intro{justify-content:center;background:rgba(40,15,0,.35)}
+  ol{margin:8px 0 4px;padding-left:22px;line-height:1.6;font-size:15.5px}
+  .how{margin-top:8px;padding:8px 12px;border-radius:12px;background:#fff8e6;font-size:14px}
+  /* hud */
+  #hud{padding:12px;pointer-events:none}
+  .hudTop{width:min(520px,100%);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .pill{padding:6px 14px;border-radius:99px;background:rgba(60,25,0,.55);font-weight:700;font-size:17px;backdrop-filter:blur(3px)}
+  .step{margin-top:8px;padding:8px 14px;border-radius:14px;background:rgba(255,248,230,.92);color:var(--ink);font-size:15px;text-align:center;max-width:min(520px,94vw);box-shadow:0 6px 14px rgba(0,0,0,.15)}
+  .msg{margin-top:8px;font-weight:700;font-size:22px;text-shadow:0 2px 0 rgba(0,0,0,.45);min-height:30px}
+  #controls{position:fixed;left:0;right:0;bottom:18px;display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none}
+  #controls > *{pointer-events:auto}
+  .swatches{display:flex;gap:10px}
+  .sw{padding:10px 16px;border-radius:16px;border:3px solid #fff;color:#fff;font:700 17px Kanit,sans-serif;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.6);box-shadow:0 5px 12px rgba(0,0,0,.25)}
+  .gauge{width:min(320px,80vw);height:22px;border-radius:99px;background:rgba(60,25,0,.5);position:relative;overflow:hidden;border:2px solid #fff}
+  .gauge .zone{position:absolute;top:0;bottom:0;left:60%;width:25%;background:rgba(111,210,107,.65)}
+  .gauge i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#fff6d6,#ffe27a)}
+  .gauge span{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:#4a2a10;font-weight:700}
+  .hold{width:150px;height:150px;border-radius:50%;border:4px solid #fff;background:radial-gradient(#ffe9a8,#ffa41f);color:#5a2c00;font:700 20px Kanit,sans-serif;cursor:pointer;box-shadow:0 8px 0 #8a4b00;user-select:none;-webkit-user-select:none;touch-action:none}
+  .hold.on{transform:translateY(5px);box-shadow:0 3px 0 #8a4b00}
+  .tapHint{padding:8px 16px;border-radius:99px;background:rgba(60,25,0,.55);font-weight:600}
+  /* result */
+  #result{justify-content:flex-end;padding-bottom:14px}
+  .stars{text-align:center;font-size:46px;letter-spacing:6px;color:#d2760a;line-height:1}
+  .stars .off{color:rgba(120,70,20,.25)}
+  .fact{font-size:15px;line-height:1.6;margin-top:6px}
+  .refs{font-size:13px;margin-top:6px;display:flex;flex-direction:column;gap:2px}
+  .refs a{color:#a04a00}
+  .row{display:flex;gap:8px}
+  .row .btn{margin-top:10px;font-size:17px;padding:11px}
+  @media (max-height:640px){ h1{font-size:34px} .rc small{display:none} .btn{padding:9px;font-size:17px} }
+</style>
+</head>
+<body>
+<div class="ui" id="menu">
+  <div style="width:100%;display:flex;justify-content:flex-start"><a class="home" href="index.html">⌂ เมนูหลัก</a></div>
+  <div style="text-align:center"><h1>ครัว<span>ขนมไทย</span> 3D</h1>
+    <div style="margin-top:6px;font-size:17px;text-shadow:0 2px 0 rgba(0,0,0,.35)">ลงมือทำขนมไทยทีละขั้น เรียนรู้วิธีทำจริง</div></div>
+  <div class="recipes" id="recipes"></div>
+</div>
+
+<div class="ui hidden" id="intro">
+  <div class="card">
+    <h2 id="iTitle"></h2>
+    <div style="font-size:14px;text-align:center;color:#8a5a20">วิธีทำจริงโดยสังเขป</div>
+    <ol id="iSteps"></ol>
+    <div class="how" id="iHow"></div>
+    <button class="btn" id="iGo">เริ่มทำเลย!</button>
+    <button class="btn alt" id="iBack">กลับ</button>
+  </div>
+</div>
+
+<div class="ui hidden" id="hud">
+  <div class="hudTop"><button class="pill" id="quit" style="border:0;color:#fff;font:700 15px Kanit,sans-serif;cursor:pointer">← ออก</button><div class="pill" id="prog"></div></div>
+  <div class="step" id="stepTxt"></div>
+  <div class="msg" id="msg"></div>
+</div>
+<div id="controls" class="hidden"></div>
+
+<div class="ui hidden" id="result">
+  <div class="card">
+    <h2 id="rTitle"></h2>
+    <div class="stars" id="rStars"></div>
+    <div style="text-align:center;font-weight:600;margin-top:4px" id="rLine"></div>
+    <div class="fact" id="rFact"></div>
+    <div class="refs" id="rRefs"></div>
+    <div class="row"><button class="btn" id="rAgain">ทำอีกครั้ง</button><button class="btn alt" id="rMenu">เลือกเมนู</button></div>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/sweets3d.js"></script>
+<script src="js/hub.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+if (!window.THREE) { document.body.innerHTML = '<p style="padding:30px;text-align:center">โหลดระบบ 3D ไม่สำเร็จ <a href="index.html" style="color:#fff">กลับเมนูหลัก</a></p>'; throw new Error('no three'); }
+const { DATA, makeSweet, std, glaze, mesh } = Sweets3D;
+const rand = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+let save = { best: {} };
+try { Object.assign(save, JSON.parse(localStorage.getItem('kitchen3d') || '{}')); } catch (e) {}
+const persist = () => { try { localStorage.setItem('kitchen3d', JSON.stringify(save)); } catch (e) {} };
+
+// ---------- sound ----------
+let ac = null;
+function tone(f, d, type = 'sine', v = .1, sl = 0, delay = 0) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (sl) o.frequency.exponentialRampToValueAtTime(f * sl, t + d);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+const sfx = {
+  good: () => tone(660, .12, 'triangle', .1, 1.4), perfect: () => { tone(880, .15, 'triangle', .1, 1.3); tone(1320, .2, 'sine', .06, 1, .08); },
+  bad: () => tone(170, .2, 'square', .06, .7), plop: () => tone(300, .15, 'sine', .1, .5), win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, .3, 'triangle', .1, 1, i * .12))
+};
+
+// ---------- scene ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, .1, 100);
+const sun = Sweets3D.addLights(scene, new THREE.Vector3(3, 8, 5), new THREE.Vector3(0, 0, 0), 1.0);
+sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+
+const K = {
+  table: std(0xa0703c, { flatShading: true }), wall: std(0xf6e3c4), clay: std(0xb5562b, { flatShading: true }), clayDark: std(0x8a3d1c, { flatShading: true }),
+  leaf: std(0x3a8f3a, { side: THREE.DoubleSide }), tray: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: .8, roughness: .35 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xc8962e, metalness: .85, roughness: .3, side: THREE.DoubleSide }),
+  syrup: glaze(0xf5c04a, { transparent: true, opacity: .82, roughness: .05 }), green: std(0x4fbf55, { roughness: .5 }), white: std(0xeaf6d6, { roughness: .55 }),
+  paste: std(0xf3e0b5, { roughness: .8 }), jelly: new THREE.MeshPhysicalMaterial({ color: 0xfff6d6, transparent: true, opacity: .4, roughness: .05, clearcoat: 1 }),
+  stick: std(0xd9b77a), ring: new THREE.MeshBasicMaterial({ color: 0x6fd26b, transparent: true, opacity: .85 }), plate: std(0xffffff, { roughness: .3 })
+};
+// โต๊ะครัวและของตกแต่ง
+const table = new THREE.Mesh(new THREE.BoxGeometry(14, .4, 8), K.table); table.position.y = -.2; table.receiveShadow = true; scene.add(table);
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), K.wall); wall.position.set(0, 6, -4.2); scene.add(wall);
+function jar(x, z, s) {
+  const pts = [[0, 0], [.45, 0], [.6, .3], [.62, .7], [.45, 1.05], [.3, 1.15], [.34, 1.25], [0, 1.25]].map(([a, b]) => new THREE.Vector2(a * s, b * s));
+  const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 16), K.clay); m.position.set(x, 0, z); m.castShadow = true; scene.add(m);
+}
+jar(-4.4, -2.4, 1.3); jar(-3.3, -2.9, .9); jar(4.3, -2.6, 1.1);
+[[-4.2, 1.6], [4.4, 1.2]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.CircleGeometry(.9, 20), K.leaf); l.rotation.x = -Math.PI / 2; l.position.set(x, .01, z); scene.add(l); const s = makeSweet(rand(10)); s.position.set(x, .02, z); s.scale.setScalar(.8); scene.add(s); });
+
+const world = new THREE.Group(); scene.add(world);
+const camGoal = { pos: new THREE.Vector3(0, 4.5, 6.5), look: new THREE.Vector3(0, .6, 0) }, camLook = new THREE.Vector3(0, .6, 0);
+camera.position.copy(camGoal.pos);
+
+// ---------- helpers ----------
+const fx = [];
+function chunkFall(m) { fx.push({ m, vy: 0, vr: (Math.random() - .5) * 3, life: 1.6 }); }
+function popText(text, good = true) { const el = $('msg'); el.textContent = text; el.style.color = good ? '#ffe27a' : '#ffb3b3'; clearTimeout(popText.t); popText.t = setTimeout(() => el.textContent = '', 1100); }
+function clearWorld() { world.clear(); world.userData = {}; fx.length = 0; }
+
+// ---------- recipe: ขนมชั้น ----------
+const CHAN = {
+  key: 'chan', sweet: 3, name: 'ขนมชั้น 9 ชั้น', em: '🟩',
+  desc: 'เทแป้งให้ตรงกับชั้นล่าง ครบ 9 ชั้น',
+  steps: ['ผสมแป้งท้าวยายม่อม แป้งมัน และแป้งข้าวเจ้า กับกะทิและน้ำตาล', 'แบ่งแป้งส่วนหนึ่งผสมน้ำใบเตยให้เป็นสีเขียว', 'เทแป้งลงถาดทีละชั้น นึ่งให้สุกก่อนเทชั้นต่อไป', 'ทำให้ครบ 9 ชั้น เพราะ "เก้า" พ้องเสียงกับ "ก้าว" แล้วพักให้เย็นก่อนตัด'],
+  how: 'แตะหน้าจอหรือกด Space เมื่อแป้งชั้นใหม่วางตรงกับชั้นล่าง ส่วนที่เกินจะถูกตัดออก',
+  init() {
+    const tray = mesh(new THREE.BoxGeometry(2.2, .12, 2.2), K.tray, 0, .06, 0); tray.receiveShadow = true; world.add(tray);
+    this.prev = { x: 0, z: 0, w: 1.6, d: 1.6 }; this.n = 0; this.acc = []; this.geo = new THREE.BoxGeometry(1, .13, 1);
+    camGoal.pos.set(0, 4.2, 5.6); camGoal.look.set(0, .5, 0); this.spawn();
+  },
+  spawn() {
+    if (this.n === 9) return finish(this.score());
+    const i = this.n, axis = i % 2 ? 'z' : 'x', m = mesh(this.geo, i % 2 ? K.white : K.green);
+    m.scale.set(this.prev.w, 1, this.prev.d); m.position.set(this.prev.x, .185 + i * .13, this.prev.z); m.receiveShadow = true;
+    m.position[axis] += -2.4; world.add(m);
+    this.cur = { m, axis, dir: 1, speed: 2.1 + i * .22 };
+    $('prog').textContent = 'ชั้นที่ ' + (i + 1) + ' / 9';
+    $('stepTxt').textContent = (i % 2 ? 'ชั้นสีขาว: แป้งผสมกะทิ' : 'ชั้นสีเขียว: แป้งผสมน้ำใบเตย') + ' · นึ่งให้สุกก่อนเทชั้นถัดไป';
+    camGoal.pos.y = 4.2 + i * .13; camGoal.look.y = .5 + i * .13;
+  },
+  update(dt) {
+    const c = this.cur; if (!c) return;
+    const p = c.m.position, base = this.prev[c.axis];
+    p[c.axis] += c.dir * c.speed * dt;
+    if (p[c.axis] - base > 2.4) c.dir = -1; else if (p[c.axis] - base < -2.4) c.dir = 1;
+  },
+  action() {
+    const c = this.cur; if (!c) return;
+    const ax = c.axis, size = ax === 'x' ? 'w' : 'd', prev = this.prev, p = c.m.position;
+    let delta = p[ax] - prev[ax];
+    if (Math.abs(delta) < .07) { delta = 0; sfx.perfect(); popText('พอดีเป๊ะ!'); } else sfx.good();
+    const overlap = prev[size] - Math.abs(delta);
+    if (overlap <= .05) { this.cur = null; chunkFall(c.m); sfx.bad(); return fail('แป้งหกออกนอกถาด! ลองตั้งใจดูอีกครั้ง'); }
+    const nc = prev[ax] + delta / 2, cut = Math.abs(delta);
+    if (cut > 0) {
+      const ch = mesh(this.geo, c.m.material); ch.position.copy(p);
+      ch.position[ax] = nc + Math.sign(delta) * (overlap / 2 + cut / 2);
+      ch.scale.copy(c.m.scale); ch.scale[ax === 'x' ? 'x' : 'z'] = cut; world.add(ch); chunkFall(ch);
+      if (cut > .25) popText('ล้นถาดไปนิด', false);
+    }
+    p[ax] = nc; c.m.scale[ax === 'x' ? 'x' : 'z'] = overlap;
+    this.prev = { ...prev, [ax]: nc, [size]: overlap };
+    this.acc.push(overlap / prev[size]); this.n++; this.cur = null;
+    setTimeout(() => { if (state === 'play' && R === CHAN) this.spawn(); }, 180);
+  },
+  score() { const a = this.acc.reduce((x, y) => x + y, 0) / this.acc.length; return { stars: a >= .9 ? 3 : a >= .72 ? 2 : 1, line: 'ความแม่นยำเฉลี่ย ' + Math.round(a * 100) + '%' }; }
+};
+
+// ---------- recipe: ทองหยอด ----------
+const YOD = {
+  key: 'yod', sweet: 0, name: 'ทองหยอด', em: '🟡',
+  desc: 'หยอดแป้งไข่ลงน้ำเชื่อมให้ตรงวงเป้า 10 หยด',
+  steps: ['ตีไข่แดงจนขึ้นฟูและข้น', 'ผสมแป้งลงไปทีละน้อยจนเนียน', 'เคี่ยวน้ำตาลกับน้ำให้เป็นน้ำเชื่อมเดือด', 'หยอดแป้งลงน้ำเชื่อมทีละหยด รอจนสุกลอยขึ้น แล้วตักแช่ในน้ำเชื่อมใส'],
+  how: 'ช้อนจะเคลื่อนไปมา แตะหน้าจอหรือกด Space เพื่อหยอดแป้งให้ตกลงในวงสีเขียว',
+  init() {
+    const pts = [[0, 0], [1.2, .05], [1.6, .35], [1.75, .7], [1.8, .72]].map(([a, b]) => new THREE.Vector2(a, b));
+    const pot = new THREE.Mesh(new THREE.LatheGeometry(pts, 40), K.brass); pot.castShadow = true; pot.receiveShadow = true; world.add(pot);
+    const syr = new THREE.Mesh(new THREE.CircleGeometry(1.68, 48), K.syrup); syr.rotation.x = -Math.PI / 2; syr.position.y = .55; world.add(syr);
+    this.spoon = new THREE.Group();
+    const bowl = mesh(new THREE.SphereGeometry(.18, 16, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), K.brass); this.spoon.add(bowl);
+    const h = mesh(new THREE.CylinderGeometry(.03, .03, 1.4, 8), K.stick, .55, .45, 0); h.rotation.z = -1.1; this.spoon.add(h);
+    const batter = mesh(new THREE.SphereGeometry(.13, 12, 8), K.syrup, 0, -.05, 0); batter.scale.y = .5; this.spoon.add(batter);
+    this.spoon.position.set(0, 2.3, 0); world.add(this.spoon);
+    this.ringM = new THREE.Mesh(new THREE.TorusGeometry(.3, .035, 8, 32), K.ring); this.ringM.rotation.x = Math.PI / 2; this.ringM.position.y = .58; world.add(this.ringM);
+    this.left = 10; this.hits = 0; this.perf = 0; this.drops = []; this.done = []; this.t = 0; this.speed = 1.3;
+    camGoal.pos.set(0, 4.6, 4.8); camGoal.look.set(0, .8, 0);
+    this.newTarget(); this.hud();
+  },
+  newTarget() { this.tx = (Math.random() * 2 - 1) * 1.05; this.ringM.position.x = this.tx; },
+  hud() { $('prog').textContent = 'เหลือ ' + this.left + ' หยด · ตรงเป้า ' + this.hits; $('stepTxt').textContent = 'หยอดแป้งไข่ลงน้ำเชื่อมที่กำลังเดือด ให้ตกลงในวงสีเขียว'; },
+  update(dt) {
+    this.t += dt * this.speed; this.spoon.position.x = Math.sin(this.t) * 1.35;
+    this.ringM.scale.setScalar(1 + Math.sin(performance.now() / 200) * .06);
+    for (const d of this.drops) {
+      d.vy -= 11 * dt; d.m.position.y += d.vy * dt;
+      if (!d.landed && d.m.position.y <= .58) this.land(d);
+    }
+    this.drops = this.drops.filter(d => !d.landed);
+    this.done.forEach((m, i) => { m.position.y = .48 + Math.sin(performance.now() / 500 + i) * .03; });
+    if (this.left === 0 && !this.drops.length && !this.ended) { this.ended = true; setTimeout(() => finish(this.score()), 600); }
+  },
+  action() {
+    if (this.left <= 0) return;
+    this.left--; const m = mesh(new THREE.SphereGeometry(.12, 12, 10), K.syrup, this.spoon.position.x, 2.15, 0);
+    world.add(m); this.drops.push({ m, vy: 0 }); tone(500, .08, 'sine', .06, .6); this.hud();
+  },
+  land(d) {
+    d.landed = true; world.remove(d.m);
+    const x = d.m.position.x, dist = Math.abs(x - this.tx);
+    if (dist < .3) {
+      this.hits++; if (dist < .1) { this.perf++; sfx.perfect(); popText('กลมสวย!'); } else { sfx.good(); popText('ตรงเป้า'); }
+      const s = makeSweet(0); s.scale.setScalar(.42); s.position.set(x, .48, (Math.random() - .5) * .3); world.add(s); this.done.push(s);
+      this.newTarget(); this.speed = Math.min(2.6, this.speed + .12);
+    } else {
+      sfx.plop(); popText(dist < .5 ? 'เกือบแล้ว!' : 'พลาดเป้า', false);
+      const sp = mesh(new THREE.CircleGeometry(.18, 12), K.syrup, x, .57, 0); sp.rotation.x = -Math.PI / 2; world.add(sp);
+      fx.push({ m: sp, vy: 0, vr: 0, life: .8, fade: true });
+    }
+    this.hud();
+  },
+  score() {
+    if (this.hits < 5) return { fail: 'ตรงเป้าแค่ ' + this.hits + ' หยด ต้องได้อย่างน้อย 5 หยดนะ' };
+    return { stars: this.hits >= 9 ? 3 : this.hits >= 7 ? 2 : 1, line: 'ตรงเป้า ' + this.hits + '/10 หยด · กลมสวย ' + this.perf + ' หยด' };
+  }
+};
+
+// ---------- recipe: ลูกชุบ ----------
+const COLORS = [{ n: 'เหลือง', c: 0xffb627 }, { n: 'แดง', c: 0xe63946 }, { n: 'ม่วงเข้ม', c: 0x5b2a86 }, { n: 'ส้ม', c: 0xff8c1a }, { n: 'ชมพู', c: 0xff6f91 }, { n: 'เขียว', c: 0x5cb85c }];
+const FRUITS = [
+  { n: 'มะม่วงสุก', col: 0, s: [.8, 1.15, .72], rz: .5 }, { n: 'พริกแดง', col: 1, s: [.42, 1.55, .42], rz: .25 },
+  { n: 'มังคุด', col: 2, s: [1, .9, 1], rz: 0, cap: true }, { n: 'ส้ม', col: 3, s: [1, .95, 1], rz: 0 }, { n: 'ชมพู่', col: 4, s: [.85, 1.1, .85], rz: .1 }
+];
+const CHUB = {
+  key: 'chub', sweet: 2, name: 'ลูกชุบ', em: '🍓',
+  desc: 'แต้มสีผลไม้ให้ถูก แล้วจุ่มวุ้นให้เคลือบพอดี',
+  steps: ['นึ่งถั่วเขียวจนสุก บดให้ละเอียด', 'กวนถั่วกับกะทิและน้ำตาลจนปั้นได้', 'ปั้นเป็นผลไม้จิ๋ว เสียบไม้ แล้วแต้มสีให้เหมือนผลจริง', 'จุ่มวุ้นหลายรอบให้เคลือบเงา แล้วติดใบตกแต่ง'],
+  how: 'เลือกสีที่ตรงกับผลไม้ แล้วกดปุ่มค้างไว้เพื่อจุ่มลงวุ้น ปล่อยเมื่อเกจอยู่ในช่องสีเขียว',
+  init() {
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(.85, .7, .9, 32, 1, true), K.brass); bowl.position.y = .45; bowl.castShadow = true; world.add(bowl);
+    const jel = new THREE.Mesh(new THREE.CylinderGeometry(.8, .68, .75, 32), K.jelly); jel.position.y = .4; world.add(jel);
+    const plate = mesh(new THREE.CylinderGeometry(1.1, 1, .08, 40), K.plate, 2.4, .04, .4); plate.receiveShadow = true; world.add(plate);
+    this.i = -1; this.pts = 0; this.first = true; this.finished = [];
+    camGoal.pos.set(.8, 4.2, 6.8); camGoal.look.set(.8, .9, 0);
+    this.next();
+  },
+  next() {
+    this.i++;
+    if (this.i >= FRUITS.length) { controls(''); return setTimeout(() => finish(this.score()), 500); }
+    const f = FRUITS[this.i], g = new THREE.Group();
+    const body = mesh(new THREE.SphereGeometry(.34, 28, 20), K.paste.clone()); body.scale.set(...f.s); body.rotation.z = f.rz; g.add(body);
+    const stick = mesh(new THREE.CylinderGeometry(.02, .02, 1.3, 6), K.stick, 0, .95, 0); g.add(stick);
+    if (f.cap) { const c = mesh(new THREE.CylinderGeometry(.14, .18, .08, 10), std(0x3f8f3a), 0, .3, 0); g.add(c); }
+    g.position.set(0, 1.8, 0); world.add(g);
+    this.fruit = g; this.body = body; this.phase = 'color'; this.first = true; this.coat = 0; this.holding = false;
+    $('prog').textContent = 'ผลที่ ' + (this.i + 1) + ' / ' + FRUITS.length + ' · ' + this.pts + ' แต้ม';
+    $('stepTxt').textContent = 'แต้มสี: ' + f.n + ' ควรเป็นสีอะไร?';
+    const opts = shuffle([f.col, ...shuffle(COLORS.map((_, k) => k).filter(k => k !== f.col)).slice(0, 2)]);
+    const box = document.createElement('div'); box.className = 'swatches';
+    opts.forEach(k => {
+      const b = document.createElement('button'); b.className = 'sw'; b.textContent = COLORS[k].n;
+      b.style.background = '#' + COLORS[k].c.toString(16).padStart(6, '0');
+      b.onclick = () => this.pick(k, b); box.appendChild(b);
+    });
+    controls(box);
+  },
+  pick(k, b) {
+    const f = FRUITS[this.i];
+    if (k !== f.col) { this.first = false; sfx.bad(); popText(COLORS[k].n + ' ไม่ใช่สีของ' + f.n, false); b.disabled = true; b.style.opacity = .35; this.shake = .4; return; }
+    sfx.good(); popText('สีสวยเหมือนจริง'); if (this.first) this.pts++;
+    this.body.material.color.setHex(COLORS[k].c);
+    this.phase = 'dip';
+    $('stepTxt').textContent = 'กดค้างเพื่อจุ่มวุ้น ปล่อยเมื่อเกจอยู่ในช่องสีเขียว';
+    const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:10px';
+    wrap.innerHTML = '<div class="gauge"><div class="zone"></div><i id="gFill"></i><span>ความหนาของวุ้น</span></div>';
+    const h = document.createElement('button'); h.className = 'hold'; h.textContent = 'กดค้าง จุ่มวุ้น';
+    const down = e => { e.preventDefault(); if (this.phase === 'dip') { this.holding = true; h.classList.add('on'); } };
+    const up = () => { if (this.holding) { this.holding = false; h.classList.remove('on'); this.release(); } };
+    h.addEventListener('pointerdown', down); h.addEventListener('pointerup', up); h.addEventListener('pointerleave', up); h.addEventListener('pointercancel', up);
+    this.keyDown = down; this.keyUp = up;
+    wrap.appendChild(h); controls(wrap);
+  },
+  release() {
+    if (this.coat < .05) return;
+    this.phase = 'out';
+    const c = this.coat, good = c >= .6 && c <= .85;
+    if (good) { this.pts++; sfx.perfect(); popText('เคลือบเงาพอดี!'); }
+    else { sfx.bad(); popText(c < .6 ? 'วุ้นบางไปหน่อย' : 'วุ้นหนาเกินไป', false); }
+    const mat = new THREE.MeshPhysicalMaterial({ color: this.body.material.color, roughness: good ? .12 : .4, clearcoat: good ? 1 : .3, clearcoatRoughness: .05 });
+    this.body.material = mat;
+    const leaf = mesh(new THREE.SphereGeometry(.12, 10, 8), std(0x3fae49), .06, .38, 0); leaf.scale.set(1, .12, .45); leaf.rotation.z = -.4; this.fruit.add(leaf);
+    controls('');
+    setTimeout(() => {
+      const f = this.fruit, n = this.finished.length;
+      f.remove(f.children[1]); f.position.set(2.4 + Math.cos(n * 1.26) * .6, .32, .4 + Math.sin(n * 1.26) * .6); f.scale.setScalar(.75);
+      this.finished.push(f); this.next();
+    }, 900);
+  },
+  update(dt) {
+    if (!this.fruit || this.phase === 'out') return;
+    const target = this.phase === 'dip' && this.holding ? .55 : 1.8;
+    this.fruit.position.y += (target - this.fruit.position.y) * Math.min(1, dt * 6);
+    if (this.phase === 'dip' && this.fruit.position.y < 1.0) this.coat = Math.min(1.1, this.coat + dt * .42);
+    const gf = $('gFill'); if (gf) gf.style.width = Math.min(100, this.coat * 100) + '%';
+    if (this.shake > 0) { this.shake -= dt; this.fruit.position.x = Math.sin(performance.now() / 30) * .08 * this.shake; } else this.fruit.position.x = 0;
+    this.fruit.rotation.y += dt * .8;
+  },
+  action() {},
+  score() { const p = this.pts; if (p < 4) return { fail: 'ได้ ' + p + '/10 แต้ม ลองแต้มสีและจุ่มวุ้นให้แม่นขึ้นนะ' }; return { stars: p >= 10 ? 3 : p >= 7 ? 2 : 1, line: 'ได้ ' + p + '/10 แต้ม (สีถูกครั้งแรก + เคลือบพอดี)' }; }
+};
+
+const RECIPES = [CHAN, YOD, CHUB];
+
+// ---------- flow ----------
+let state = 'menu', R = null;
+function show(id) { ['menu', 'intro', 'hud', 'result'].forEach(s => $(s).classList.toggle('hidden', s !== id)); $('controls').classList.toggle('hidden', id !== 'hud'); }
+function controls(node) { const c = $('controls'); c.replaceChildren(); if (node) c.appendChild(node); }
+function drawMenu() {
+  const box = $('recipes'); box.replaceChildren();
+  RECIPES.forEach(r => {
+    const b = document.createElement('button'); b.className = 'rc';
+    const st = save.best[r.key] || 0;
+    b.innerHTML = '<div class="em"></div><div><b></b><small></small></div><div class="st"></div>';
+    b.querySelector('.em').textContent = r.em; b.querySelector('b').textContent = r.name; b.querySelector('small').textContent = r.desc;
+    b.querySelector('.st').textContent = '★'.repeat(st) + '☆'.repeat(3 - st);
+    b.onclick = () => openIntro(r); box.appendChild(b);
+  });
+}
+function openIntro(r) {
+  R = r; state = 'intro'; show('intro');
+  $('iTitle').textContent = r.name; $('iHow').textContent = '🎮 ' + r.how;
+  $('iSteps').replaceChildren(...r.steps.map(s => { const li = document.createElement('li'); li.textContent = s; return li; }));
+}
+function startRecipe() {
+  clearWorld(); controls(''); $('msg').textContent = ''; R.ended = false;
+  R.init(); state = 'play'; show('hud');
+  if (R === CHAN || R === YOD) controls(Object.assign(document.createElement('div'), { className: 'tapHint', textContent: R === CHAN ? 'แตะเพื่อเทแป้งชั้นนี้' : 'แตะเพื่อหยอดแป้ง' }));
+}
+function fail(text) {
+  state = 'result'; setTimeout(() => {
+    show('result'); $('rTitle').textContent = 'ยังไม่สำเร็จ'; $('rStars').innerHTML = '<span class="off">★★★</span>';
+    $('rLine').textContent = text; $('rFact').textContent = 'ไม่เป็นไร ขนมไทยต้องอาศัยความประณีตและการฝึกฝน ลองอีกครั้งนะ'; $('rRefs').replaceChildren();
+  }, 700);
+}
+function finish(res) {
+  if (res.fail) return fail(res.fail);
+  state = 'result'; sfx.win();
+  save.best[R.key] = Math.max(save.best[R.key] || 0, res.stars); persist();
+  const d = DATA[R.sweet];
+  if (window.Hub) {
+    Hub.seeSweet(R.sweet);
+    const v = Object.values(save.best), total = v.reduce((a, b) => a + b, 0);
+    Hub.stat('kitchen.recipes', v.filter(x => x > 0).length, 'set'); Hub.stat('kitchen.stars', total, 'set');
+    Hub.stat('kitchen.three', v.filter(x => x >= 3).length, 'set'); Hub.submit('kitchen', total, true);
+  }
+  // จัดจานโชว์ขนมที่ทำเสร็จ
+  setTimeout(() => {
+    clearWorld();
+    const plate = mesh(new THREE.CylinderGeometry(1.3, 1.15, .1, 48), K.plate, 0, .05, 0); plate.receiveShadow = true; world.add(plate);
+    const leaf = new THREE.Mesh(new THREE.CircleGeometry(1.1, 40), K.leaf); leaf.rotation.x = -Math.PI / 2; leaf.position.y = .11; world.add(leaf);
+    const n = R === CHAN ? 1 : 5;
+    for (let i = 0; i < n; i++) { const s = makeSweet(R.sweet); const a = i / n * Math.PI * 2, r = n > 1 ? .55 : 0; s.position.set(Math.cos(a) * r, .12, Math.sin(a) * r); s.scale.setScalar(n > 1 ? .9 : 2); world.add(s); }
+    world.userData.showcase = true;
+    camGoal.pos.set(0, 2.4, 4.6); camGoal.look.set(0, -2.1, 0);
+    show('result');
+    $('rTitle').textContent = 'ทำ' + d.name + 'สำเร็จ!';
+    $('rStars').innerHTML = '★'.repeat(res.stars) + '<span class="off">' + '★'.repeat(3 - res.stars) + '</span>';
+    $('rLine').textContent = res.line;
+    $('rFact').textContent = d.fact + ' · ความหมาย: ' + d.meaning;
+    $('rRefs').replaceChildren(...d.refs.map(r => { const a = document.createElement('a'); a.href = r.u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = '🔗 ' + r.t; return a; }));
+  }, 500);
+}
+function toMenu() { state = 'menu'; R = null; clearWorld(); world.userData.showcase = false; controls(''); drawMenu(); show('menu'); camGoal.pos.set(0, 3.2, 7); camGoal.look.set(0, -2.2, 0); menuShow(); }
+function menuShow() { // ขนมทั้งสามบนโต๊ะหน้าเมนู
+  [3, 0, 2].forEach((t, i) => { const s = makeSweet(t); s.position.set((i - 1) * 1.5, 0, .4); s.scale.setScalar(1.4); world.add(s); });
+  world.userData.menu = true;
+}
+
+$('iGo').onclick = startRecipe; $('iBack').onclick = toMenu;
+$('rAgain').onclick = () => { world.userData.showcase = false; openIntro(R); };
+$('rMenu').onclick = toMenu; $('quit').onclick = toMenu;
+renderer.domElement.addEventListener('pointerdown', () => { if (state === 'play' && R) R.action(); });
+addEventListener('keydown', e => {
+  if (state !== 'play' || !R || e.repeat) return;
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (R === CHUB) { if (R.keyDown) R.keyDown(e); } else R.action(); }
+});
+addEventListener('keyup', e => { if (state === 'play' && R === CHUB && (e.key === ' ' || e.key === 'Enter') && R.keyUp) R.keyUp(); });
+
+// ---------- loop ----------
+const clock = new THREE.Clock();
+function loop() {
+  const dt = Math.min(.05, clock.getDelta()), t = performance.now() / 1000;
+  if (state === 'play' && R) R.update(dt);
+  for (let i = fx.length - 1; i >= 0; i--) {
+    const f = fx[i]; f.life -= dt;
+    if (f.fade) { f.m.scale.multiplyScalar(1 + dt * 1.5); }
+    else { f.vy -= 9 * dt; f.m.position.y += f.vy * dt; f.m.rotation.z += f.vr * dt; }
+    if (f.life <= 0) { world.remove(f.m); fx.splice(i, 1); }
+  }
+  if (world.userData.showcase || world.userData.menu) world.children.forEach((c, i) => { if (c.type === 'Group') c.rotation.y = t * .6 + i; });
+  const portrait = camera.aspect < .9;
+  const goal = camGoal.pos.clone(); if (portrait) goal.multiplyScalar(1.45).setY(camGoal.pos.y * 1.25);
+  camera.position.lerp(goal, Math.min(1, dt * 3)); camLook.lerp(camGoal.look, Math.min(1, dt * 3)); camera.lookAt(camLook);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+toMenu(); loop();
+if (window.Hub) { Hub.visit('kitchen'); Hub.mountMusic(); }
+</script>
+</body>
+</html>

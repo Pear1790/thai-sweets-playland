@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<title>Tom Yum Rush</title>
+<style>
+  html,body{margin:0;height:100%;background:#2b1408;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif}
+  .home{position:fixed;left:10px;bottom:10px;z-index:2;font:600 13px system-ui,sans-serif;color:#fff;text-decoration:none;padding:6px 12px;border-radius:99px;background:rgba(0,0,0,.5)}
+  canvas{background:linear-gradient(#ffb347,#ff6a3d 70%,#8a2a12);border-radius:12px;max-width:100vw;max-height:100vh;touch-action:none}
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ เมนู</a>
+<canvas id="c" width="480" height="720"></canvas>
+<script src="js/hub.js"></script>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+const GOOD = ['🦐','🍄','🍋','🌿','🌶️'];
+const BAD = ['🪳','🧦','🗑️'];
+let state, best = 0;
+try { best = +localStorage.getItem('tomyum-best') || 0; } catch (e) {}
+
+const pot = { x: W / 2, w: 90, y: H - 70 };
+let targetX = W / 2;
+const keys = {};
+
+function reset() {
+  state = { mode: 'play', score: 0, lives: 3, items: [], t: 0, spawn: 0, combo: 0, slow: 0, pops: [] };
+}
+state = { mode: 'title' };
+
+function spawn() {
+  const r = Math.random();
+  let type = 'good', e;
+  if (r < 0.28) { type = 'bad'; e = BAD[Math.floor(Math.random() * BAD.length)]; }
+  else if (r < 0.32) { type = 'star'; e = '⭐'; }
+  else e = GOOD[Math.floor(Math.random() * GOOD.length)];
+  state.items.push({ x: 30 + Math.random() * (W - 60), y: -30, e, type, vy: 2 + Math.random() * 1.5 + state.score / 150, rot: Math.random() * 6 });
+}
+
+function pop(x, y, text, color) { state.pops.push({ x, y, text, color, life: 40 }); }
+
+function update() {
+  if (state.mode !== 'play') return;
+  state.t++;
+  if (keys.ArrowLeft || keys.a) targetX -= 9;
+  if (keys.ArrowRight || keys.d) targetX += 9;
+  targetX = Math.max(pot.w / 2, Math.min(W - pot.w / 2, targetX));
+  pot.x += (targetX - pot.x) * 0.35;
+
+  const k = state.slow > 0 ? 0.45 : 1;
+  if (state.slow > 0) state.slow--;
+  state.spawn -= k;
+  if (state.spawn <= 0) { spawn(); state.spawn = Math.max(18, 55 - state.score / 8); }
+
+  for (const it of state.items) {
+    it.y += it.vy * k; it.rot += 0.05;
+    if (!it.done && it.y > pot.y - 20 && it.y < pot.y + 20 && Math.abs(it.x - pot.x) < pot.w / 2 + 6) {
+      it.done = true;
+      if (it.type === 'good') {
+        state.combo++;
+        const pts = 10 + Math.min(state.combo, 10) * 2;
+        state.score += pts; pop(it.x, it.y, '+' + pts, '#fff');
+      } else if (it.type === 'star') {
+        state.slow = 300; pop(it.x, it.y, 'ช้าลง!', '#ffe14d');
+      } else {
+        state.lives--; state.combo = 0; pop(it.x, it.y, 'อี๋!', '#7cf');
+        if (state.lives <= 0) {
+          state.mode = 'over';
+          if (window.Hub) { Hub.stat('tomyum.best', state.score); Hub.submit('tomyum', state.score); }
+          if (state.score > best) { best = state.score; try { localStorage.setItem('tomyum-best', best); } catch (e) {} }
+        }
+      }
+    } else if (!it.done && it.y > H + 30) {
+      it.done = true;
+      if (it.type === 'good') state.combo = 0;
+    }
+  }
+  state.items = state.items.filter(i => !i.done);
+  for (const p of state.pops) { p.y -= 1; p.life--; }
+  state.pops = state.pops.filter(p => p.life > 0);
+}
+
+function text(t, x, y, size, color, align = 'center') {
+  ctx.font = `bold ${size}px system-ui, sans-serif`; ctx.textAlign = align; ctx.fillStyle = color;
+  ctx.fillText(t, x, y);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  if (state.mode === 'title') {
+    text('🍲', W / 2, 240, 110, '#fff');
+    text('Tom Yum Rush', W / 2, 330, 44, '#fff');
+    text('รับวัตถุดิบลงหม้อ หลบของเน่า!', W / 2, 375, 20, '#fff3d6');
+    text('ลูกศร / A D / ลากนิ้วหรือเมาส์', W / 2, 410, 16, '#ffe0b0');
+    text('คลิกหรือกด Space เพื่อเริ่ม', W / 2, 480, 22, '#ffe14d');
+    if (best) text('คะแนนสูงสุด ' + best, W / 2, 520, 18, '#fff');
+    return;
+  }
+  ctx.textBaseline = 'middle';
+  for (const it of state.items) {
+    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(Math.sin(it.rot) * 0.4);
+    ctx.font = '34px serif'; ctx.textAlign = 'center'; ctx.fillText(it.e, 0, 0); ctx.restore();
+  }
+  ctx.font = '78px serif'; ctx.textAlign = 'center'; ctx.fillText('🍲', pot.x, pot.y);
+  for (const p of state.pops) { ctx.globalAlpha = p.life / 40; text(p.text, p.x, p.y, 22, p.color); ctx.globalAlpha = 1; }
+  ctx.textBaseline = 'alphabetic';
+  text('คะแนน ' + state.score, 16, 36, 24, '#fff', 'left');
+  text('❤️'.repeat(Math.max(0, state.lives)), W - 16, 36, 22, '#fff', 'right');
+  if (state.combo > 2) text('คอมโบ x' + state.combo, 16, 64, 18, '#ffe14d', 'left');
+  if (state.slow > 0) text('⭐ ช้าลง', W / 2, 36, 18, '#ffe14d');
+  if (state.mode === 'over') {
+    ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(0, 0, W, H);
+    text('เกมจบ', W / 2, 290, 48, '#fff');
+    text('คะแนน ' + state.score, W / 2, 340, 28, '#ffe14d');
+    text('สูงสุด ' + best, W / 2, 378, 20, '#fff');
+    text('คลิกหรือกด Space เพื่อเล่นใหม่', W / 2, 440, 20, '#fff3d6');
+  }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+loop();
+if (window.Hub) { Hub.visit('tomyum'); Hub.mountMusic(); }
+
+function start() { if (state.mode !== 'play') { reset(); targetX = pot.x = W / 2; } }
+function toCanvasX(clientX) { const r = cv.getBoundingClientRect(); return (clientX - r.left) * W / r.width; }
+cv.addEventListener('pointerdown', e => { start(); targetX = toCanvasX(e.clientX); });
+cv.addEventListener('pointermove', e => { targetX = toCanvasX(e.clientX); });
+addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') start(); });
+addEventListener('keyup', e => { keys[e.key] = false; });
+</script>
+</body>
+</html>

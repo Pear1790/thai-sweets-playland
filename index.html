@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ขนมไทยเพลย์แลนด์</title>
+<meta name="theme-color" content="#2b1b55">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="vendor/fonts/kanit.css" rel="stylesheet">
+<style>
+  :root{--gold:#ffe27a;--ink:#fff;--mute:#d8f5ee;--panel:rgba(255,255,255,.08);--line:rgba(255,226,122,.35);--pink:#ff8fc0}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;font-family:Kanit,"Noto Sans Thai",system-ui,sans-serif;color:var(--ink);
+    background:radial-gradient(1200px 600px at 50% -10%,#1d6a68 0%,transparent 60%),linear-gradient(#0f2f3a,#2b1b55 60%,#5a1a4a);background-attachment:fixed}
+  main{max-width:860px;margin:0 auto;padding:28px 16px 70px}
+  h1{margin:0;text-align:center;font-size:clamp(32px,7vw,52px);color:var(--gold);text-shadow:0 3px 0 #4a1a00;line-height:1.1}
+  .sub{text-align:center;margin:6px 0 22px;color:var(--mute)}
+  h2{margin:34px 0 12px;font-size:22px;color:var(--gold)}
+  .panel{background:var(--panel);border:2px solid var(--line);border-radius:22px;padding:16px;backdrop-filter:blur(4px)}
+  /* profile */
+  .profile{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .avatar{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;font-size:40px;background:linear-gradient(#ffe27a,#ffa41f);border:3px solid #fff;cursor:pointer;flex:none}
+  .pinfo{flex:1;min-width:200px}
+  .nameIn{font:700 22px Kanit,sans-serif;color:#fff;background:transparent;border:0;border-bottom:2px dashed var(--line);padding:2px 0;width:100%;max-width:280px}
+  .nameIn:focus{outline:none;border-bottom-color:var(--gold)}
+  .lvl{margin-top:4px;color:var(--pink);font-weight:600}
+  .xpbar{height:12px;border-radius:99px;background:rgba(0,0,0,.35);margin-top:6px;overflow:hidden}
+  .xpbar i{display:block;height:100%;background:linear-gradient(90deg,#ff8a2a,#ffe14d)}
+  .xptxt{font-size:12px;color:var(--mute);margin-top:3px}
+  .pstats{display:flex;gap:8px;flex-wrap:wrap}
+  .pstats div{padding:8px 12px;border-radius:14px;background:rgba(0,0,0,.25);text-align:center;font-size:12px;min-width:76px}
+  .pstats b{display:block;font-size:20px;color:var(--gold)}
+  .avPick{display:none;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .avPick.on{display:flex}
+  .avPick button{font-size:24px;width:44px;height:44px;border-radius:12px;border:2px solid var(--line);background:rgba(0,0,0,.25);cursor:pointer}
+  /* games */
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))}
+  a.card{display:flex;gap:14px;align-items:center;padding:16px;border-radius:22px;text-decoration:none;color:inherit;
+    background:var(--panel);border:2px solid var(--line);transition:transform .15s,border-color .15s,background .15s}
+  a.card:hover,a.card:focus-visible{transform:translateY(-4px);border-color:var(--gold);background:rgba(255,255,255,.14);outline:none}
+  .ico{flex:none;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;font-size:34px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.2)}
+  .t{font-weight:700;font-size:19px}
+  .d{font-size:13.5px;color:var(--mute);margin-top:2px;line-height:1.45}
+  .tag{display:inline-block;margin-top:6px;font-size:11.5px;padding:2px 10px;border-radius:99px;background:rgba(0,0,0,.3);color:var(--gold)}
+  .new{background:var(--pink);color:#4a0a30;font-weight:700;margin-left:4px;vertical-align:3px}
+  /* collection */
+  .sweets{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+  .sw{border-radius:16px;background:rgba(0,0,0,.25);padding:8px 6px;text-align:center;font-size:13px;cursor:pointer;border:2px solid transparent}
+  .sw:hover{border-color:var(--line)}
+  .sw canvas{width:72px;height:72px;display:block;margin:0 auto}
+  .sw.locked canvas{filter:brightness(0) opacity(.35)}
+  .sw.locked span{color:#9bb}
+  .swInfo{margin-top:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(#fff3d1,#f1d595);color:#4a2a10;display:none;line-height:1.6}
+  .swInfo.on{display:block}
+  .swInfo b{font-size:18px;color:#7a3a00}
+  .swInfo a{color:#a04a00}
+  .hint{font-size:13px;color:var(--mute);margin:-4px 0 10px}
+  /* achievements */
+  .achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:10px}
+  .ach{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:16px;background:rgba(0,0,0,.25);border:2px solid transparent}
+  .ach.on{border-color:var(--gold);background:rgba(255,226,122,.12)}
+  .ach .i{font-size:28px;flex:none;width:36px;text-align:center}
+  .ach:not(.on) .i{filter:grayscale(1);opacity:.45}
+  .ach b{display:block;font-size:14.5px}
+  .ach small{color:var(--mute);font-size:12px;line-height:1.35;display:block}
+  /* board */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .tabs button{padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:#fff;font:500 14px Kanit,sans-serif;cursor:pointer}
+  .tabs button[aria-pressed=true]{background:var(--gold);color:#4a2a00;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.08)}
+  td.r{width:36px;text-align:center;font-weight:700;color:var(--gold)}
+  td.s{text-align:right;font-weight:700}
+  .empty{color:var(--mute);text-align:center;padding:14px}
+  .online{margin-top:16px;display:none}
+  .online.on{display:block}
+  .btn{padding:8px 16px;border-radius:99px;border:2px solid #fff;background:linear-gradient(#ffe27a,#ffa41f);color:#5a2c00;font:700 15px Kanit,sans-serif;cursor:pointer}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  footer{text-align:center;margin-top:34px;font-size:13px;color:#a9cfc8;line-height:1.6}
+  #install{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>ขนมไทยเพลย์แลนด์</h1>
+  <p class="sub">เล่นเกม สะสมขนม เก็บเหรียญ แล้วเรียนรู้วัฒนธรรมไทยไปด้วยกัน</p>
+
+  <section class="panel">
+    <div class="profile">
+      <div class="avatar" id="avatar" title="เปลี่ยนรูปโปรไฟล์" role="button" tabindex="0"></div>
+      <div class="pinfo">
+        <input class="nameIn" id="nameIn" maxlength="20" placeholder="พิมพ์ชื่อเล่นของคุณ">
+        <div class="lvl" id="lvl"></div>
+        <div class="xpbar"><i id="xpbar"></i></div>
+        <div class="xptxt" id="xptxt"></div>
+        <div class="avPick" id="avPick"></div>
+      </div>
+      <div class="pstats" id="pstats"></div>
+    </div>
+  </section>
+
+  <h2>🎮 เลือกเล่น</h2>
+  <div class="grid">
+    <a class="card" href="kitchen-3d.html">
+      <div class="ico" style="background:linear-gradient(#ffd6a8,#e07a3a)">🧑‍🍳</div>
+      <div><div class="t">ครัวขนมไทย 3D <span class="tag new">ใหม่</span></div><div class="d">ลงมือทำขนมชั้น ทองหยอด และลูกชุบทีละขั้นตอน ได้รู้วิธีทำจริง</div><span class="tag">3D · ทำอาหาร · ได้ความรู้</span></div>
+    </a>
+    <a class="card" href="market-dash-3d.html">
+      <div class="ico" style="background:linear-gradient(#7fe3d4,#2a9d8f)">🛶</div>
+      <div><div class="t">ตลาดน้ำซิ่ง 3D</div><div class="d">พายเรือในคลอง เก็บขนมไทย 10 ชนิด หลบท่อนไม้และเรือ มีโชว์รูมขนม 3D</div><span class="tag">3D · วิ่งไม่รู้จบ</span></div>
+    </a>
+    <a class="card" href="thai-sweets.html">
+      <div class="ico" style="background:linear-gradient(#ffe27a,#ff8a2a)">🍮</div>
+      <div><div class="t">ขนมไทยป๊อป 3D</div><div class="d">เกมจับคู่ 3 ขนมไทยแบบ 3D 16 ด่าน พร้อมการ์ดความรู้มีแหล่งอ้างอิงและควิซ</div><span class="tag">Match-3 · ได้ความรู้</span></div>
+    </a>
+    <a class="card" href="quiz-rush.html">
+      <div class="ico" style="background:linear-gradient(#ff9bd0,#c2185b)">⚡</div>
+      <div><div class="t">Quiz Rush ปั่นควิซ</div><div class="d">ตอบให้ไวใน 60 วินาที มีโหมดครูให้สร้างชุดคำถามเองแล้วแชร์ให้นักเรียน</div><span class="tag">ควิซ · โหมดครู</span></div>
+    </a>
+    <a class="card" href="ai-guide.html">
+      <div class="ico" style="background:linear-gradient(#7fd6ff,#2b6fe0)">🤖</div>
+      <div><div class="t">สารานุกรมสั่ง AI</div><div class="d">AI แต่ละตัวทำอะไรได้ สั่งอย่างไร ควรเลือกตัวไหน พร้อมพรอมต์ให้ลอง</div><span class="tag">คู่มือ · พรอมต์</span></div>
+    </a>
+    <a class="card" href="tomyum.html">
+      <div class="ico" style="background:linear-gradient(#ffb347,#ff6a3d)">🍲</div>
+      <div><div class="t">Tom Yum Rush</div><div class="d">ใช้หม้อรับวัตถุดิบต้มยำ หลบของเน่า ยิ่งเล่นยิ่งเร็ว</div><span class="tag">อาร์เคด · เล่นสั้น ๆ</span></div>
+    </a>
+  </div>
+
+  <h2>🧺 สมุดสะสมขนมไทย <span id="swCount" style="font-size:15px;color:var(--mute)"></span></h2>
+  <p class="hint">ค้นพบขนมได้จากตลาดน้ำซิ่งและครัวขนมไทย กดที่ขนมเพื่ออ่านความรู้</p>
+  <div class="panel">
+    <div class="sweets" id="sweets"></div>
+    <div class="swInfo" id="swInfo"></div>
+  </div>
+
+  <h2>🏅 เหรียญรางวัล <span id="achCount" style="font-size:15px;color:var(--mute)"></span></h2>
+  <div class="achs" id="achs"></div>
+
+  <h2>🏆 กระดานคะแนน</h2>
+  <div class="panel">
+    <div class="tabs" id="tabs"></div>
+    <div class="row" style="margin-bottom:4px"><b id="boardTitle">คะแนนในเครื่องนี้</b></div>
+    <table id="board"></table>
+    <div class="online" id="online">
+      <div class="row"><b>🌐 กระดานคะแนนออนไลน์</b><button class="btn" id="sync">ส่งคะแนนสูงสุดของฉัน</button></div>
+      <table id="oBoard" style="margin-top:8px"></table>
+      <div class="hint" id="oMsg" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <footer>
+    <button class="btn" id="install">📲 ติดตั้งเป็นแอป</button>
+    <div style="margin-top:10px">เล่นออฟไลน์ได้ · ความคืบหน้าบันทึกไว้ในเบราว์เซอร์นี้</div>
+  </footer>
+</main>
+
+<script src="vendor/three.min.js"></script>
+<script src="js/sweets3d.js"></script>
+<script src="js/hub.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const S = Hub.S;
+Hub.visit('hub');
+Hub.mountMusic();
+
+// ---------- profile ----------
+const AVATARS = ['🍮', '🧑‍🍳', '🛶', '⚡', '🤖', '🍲', '🐘', '🌸', '🥭', '👑'];
+$('nameIn').value = S.name;
+$('nameIn').addEventListener('change', () => { S.name = $('nameIn').value.trim().slice(0, 20); Hub.save(); renderBoard(); });
+$('avatar').onclick = () => $('avPick').classList.toggle('on');
+$('avatar').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') $('avPick').classList.toggle('on'); };
+AVATARS.forEach(a => {
+  const b = document.createElement('button'); b.textContent = a; b.setAttribute('aria-label', 'เลือกรูป ' + a);
+  b.onclick = () => { S.avatar = a; Hub.save(); renderProfile(); $('avPick').classList.remove('on'); };
+  $('avPick').appendChild(b);
+});
+function renderProfile() {
+  const L = Hub.level();
+  $('avatar').textContent = S.avatar;
+  $('lvl').textContent = 'เลเวล ' + L.lv + ' · ' + L.title;
+  $('xpbar').style.width = Math.round(Math.min(1, L.progress) * 100) + '%';
+  $('xptxt').textContent = L.xp + ' / ' + L.next + ' XP';
+  const st = k => S.stats[k] || 0;
+  $('pstats').innerHTML = '';
+  [['ขนมที่พบ', Object.keys(S.seen).length + '/10'], ['เหรียญ', Object.keys(S.ach).length + '/' + Hub.ACH.length], ['ดาวป๊อป', st('pop.stars')], ['ดาวครัว', st('kitchen.stars')]].forEach(([l, v]) => {
+    const d = document.createElement('div'); const b = document.createElement('b'); b.textContent = v; d.append(b, l); $('pstats').appendChild(d);
+  });
+}
+
+// ---------- collection ----------
+let sprites = null;
+try { if (window.THREE) sprites = Sweets3D.sprites(Sweets3D.DATA.map((_, i) => i), 144); } catch (e) { sprites = null; }
+function renderSweets() {
+  const box = $('sweets'); box.innerHTML = '';
+  $('swCount').textContent = Object.keys(S.seen).length + '/10';
+  Sweets3D.DATA.forEach((d, i) => {
+    const seen = !!S.seen[i], el = document.createElement('div');
+    el.className = 'sw' + (seen ? '' : ' locked'); el.tabIndex = 0; el.setAttribute('role', 'button');
+    if (sprites) { const c = document.createElement('canvas'); c.width = c.height = 144; c.getContext('2d').drawImage(sprites[i], 0, 0); el.appendChild(c); }
+    const s = document.createElement('span'); s.textContent = seen ? d.name : '???'; el.appendChild(s);
+    el.onclick = () => showSweet(i);
+    box.appendChild(el);
+  });
+}
+function showSweet(i) {
+  const d = Sweets3D.DATA[i], box = $('swInfo'), seen = !!S.seen[i];
+  box.classList.add('on'); box.innerHTML = '';
+  const b = document.createElement('b'); b.textContent = seen ? d.name : 'ยังไม่ค้นพบ'; box.appendChild(b);
+  const p = document.createElement('div');
+  p.textContent = seen ? d.fact + ' · ความหมาย: ' + d.meaning : 'ลองเล่นตลาดน้ำซิ่ง 3D หรือครัวขนมไทยเพื่อค้นพบขนมชนิดนี้';
+  box.appendChild(p);
+  if (seen && d.refs.length) {
+    const r = document.createElement('div'); r.style.fontSize = '13px'; r.append('อ้างอิง: ');
+    d.refs.forEach((x, k) => { const a = document.createElement('a'); a.href = x.u; a.target = '_blank'; a.rel = 'noopener'; a.textContent = x.t; r.append(a); if (k < d.refs.length - 1) r.append(' · '); });
+    box.appendChild(r);
+  }
+}
+
+// ---------- achievements ----------
+function renderAch() {
+  const box = $('achs'); box.innerHTML = '';
+  $('achCount').textContent = Object.keys(S.ach).length + '/' + Hub.ACH.length;
+  Hub.ACH.forEach(a => {
+    const on = !!S.ach[a.id], d = document.createElement('div'); d.className = 'ach' + (on ? ' on' : '');
+    const i = document.createElement('div'); i.className = 'i'; i.textContent = a.icon;
+    const t = document.createElement('div'); const b = document.createElement('b'); b.textContent = a.t; const s = document.createElement('small'); s.textContent = a.d;
+    t.append(b, s); d.append(i, t); box.appendChild(d);
+  });
+}
+
+// ---------- leaderboard ----------
+let game = 'dash';
+function renderBoard() {
+  $('tabs').innerHTML = '';
+  Object.entries(Hub.GAMES).forEach(([k, name]) => {
+    const b = document.createElement('button'); b.textContent = name; b.setAttribute('aria-pressed', k === game);
+    b.onclick = () => { game = k; renderBoard(); renderOnline(); }; $('tabs').appendChild(b);
+  });
+  const t = $('board'); t.innerHTML = '';
+  const list = S.board[game] || [];
+  if (!list.length) { t.innerHTML = '<tr><td class="empty">ยังไม่มีคะแนน ลองเล่นเกมนี้ดูก่อน</td></tr>'; return; }
+  list.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const a = document.createElement('td'); a.className = 'r'; a.textContent = i + 1;
+    const n = document.createElement('td'); n.textContent = (r.a || '') + ' ' + r.n;
+    const d = document.createElement('td'); d.style.cssText = 'font-size:12px;color:var(--mute)'; d.textContent = new Date(r.d).toLocaleDateString('th-TH');
+    const s = document.createElement('td'); s.className = 's'; s.textContent = r.s.toLocaleString();
+    tr.append(a, n, d, s); t.appendChild(tr);
+  });
+}
+// คะแนนสูงสุดที่ใช้เทียบบนกระดานออนไลน์
+function myBest() {
+  const st = k => S.stats[k] || 0;
+  return { dash: st('dash.best'), pop: st('pop.stars'), quiz: st('quiz.best'), kitchen: st('kitchen.stars'), tomyum: st('tomyum.best') };
+}
+
+// ออนไลน์: ใช้ได้เมื่อเปิดผ่านลิงก์ที่เผยแพร่บน claude.ai เท่านั้น
+let online = null, rows = [];
+async function initOnline() {
+  if (!window.claude || !window.claude.use) return;
+  const db = await claude.use('db'), user = await claude.use('user');
+  if (!db || !user) return;
+  const uid = await user.id();
+  online = { db, user, uid };
+  $('online').classList.add('on');
+  if (!uid) { $('sync').style.display = 'none'; $('oMsg').textContent = 'ลงชื่อเข้าใช้ claude.ai เพื่อส่งคะแนนของคุณ'; }
+  db.collection('scores').onSnapshot(snap => { rows = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderOnline(); },
+    () => { $('oMsg').textContent = 'โหลดกระดานออนไลน์ไม่ได้ในตอนนี้'; });
+  $('sync').onclick = async () => {
+    $('sync').disabled = true;
+    try { await db.collection('scores').doc(uid).set({ ...myBest(), xp: Hub.xp(), updated: Date.now() }); $('oMsg').textContent = 'ส่งคะแนนแล้ว ✓'; }
+    catch (e) { $('oMsg').textContent = e && e.code === 'invalid_argument' ? 'บัญชีนี้มีสิทธิ์ดูอย่างเดียว ส่งคะแนนไม่ได้' : 'ส่งคะแนนไม่สำเร็จ ลองใหม่อีกครั้ง'; }
+    $('sync').disabled = false;
+  };
+}
+async function renderOnline() {
+  if (!online) return;
+  const t = $('oBoard'), list = rows.filter(r => (r[game] || 0) > 0).sort((a, b) => b[game] - a[game]).slice(0, 10);
+  if (!list.length) { t.innerHTML = '<tr><td class="empty">ยังไม่มีใครส่งคะแนนเกมนี้</td></tr>'; return; }
+  const ps = await online.user.profiles(list.map(r => r.id));
+  t.innerHTML = '';
+  list.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    const a = document.createElement('td'); a.className = 'r'; a.textContent = i + 1;
+    const n = document.createElement('td');
+    const img = document.createElement('img'); img.src = ps[r.id].avatarUrl; img.alt = ''; img.style.cssText = 'width:22px;height:22px;border-radius:50%;vertical-align:-6px;margin-right:6px';
+    n.append(img, (ps[r.id].name || 'ผู้เล่น') + (r.id === online.uid ? ' (คุณ)' : ''));
+    const s = document.createElement('td'); s.className = 's'; s.textContent = Number(r[game]).toLocaleString();
+    tr.append(a, n, s); t.appendChild(tr);
+  });
+}
+
+// ---------- PWA ----------
+let deferred = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; $('install').style.display = 'inline-block'; });
+$('install').onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $('install').style.display = 'none'; };
+// ใช้ service worker เฉพาะตอนเปิดเป็นหน้าเว็บของตัวเอง (ไม่ใช่ในกรอบของ claude.ai)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && window.top === window) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+renderProfile(); renderSweets(); renderAch(); renderBoard(); initOnline();
+</script>
+</body>
+</html>

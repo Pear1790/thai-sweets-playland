@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<title>ขนมไทยป๊อป</title>
+<link href="vendor/fonts/kanit.css" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#0b1f24;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .home{position:fixed;left:10px;bottom:10px;z-index:2;font:600 13px Kanit,system-ui,sans-serif;color:#fff;text-decoration:none;padding:6px 12px;border-radius:99px;background:rgba(0,0,0,.5)}
+  canvas{height:min(100vh,calc(100vw * 760 / 480));aspect-ratio:480/760;touch-action:none;user-select:none;-webkit-user-select:none}
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ เมนู</a>
+<canvas id="c"></canvas>
+<script src="vendor/three.min.js"></script>
+<script src="js/sweets3d.js"></script>
+<script src="js/hub.js"></script>
+<script>
+const W = 480, H = 760, N = 8, T = 54, BX = 24, BY = 250;
+const FONT = 'Kanit, "Noto Sans Thai", system-ui, sans-serif';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
+cv.width = W * dpr; cv.height = H * dpr;
+ctx.scale(dpr, dpr);
+
+const TYPE_COLORS = ['#ffc933', '#ff8a2a', '#ff5d8f', '#6fd26b', '#a468f0', '#4cb8ff'];
+const TYPE_NAMES = ['ทองหยอด', 'ทองหยิบ', 'ลูกชุบ', 'ขนมชั้น', 'ช่อม่วง', 'กลีบลำดวน'];
+const LEVEL_COUNT = 16;
+
+// ---------- persistence ----------
+let save = { unlocked: 1, stars: {}, cards: [], kp: 0 };
+try { Object.assign(save, JSON.parse(localStorage.getItem('thai-sweets') || '{}')); } catch (e) {}
+function persist() { try { localStorage.setItem('thai-sweets', JSON.stringify(save)); } catch (e) {} }
+
+// ---------- audio ----------
+let ac = null, muted = false;
+function tone(f, d, type = 'sine', v = 0.12, sl = 0, delay = 0) {
+  if (muted || !ac) return;
+  const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (sl) o.frequency.exponentialRampToValueAtTime(f * sl, t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d);
+}
+const sfx = {
+  swap: () => tone(300, 0.09, 'triangle', 0.1, 1.5),
+  bad: () => tone(160, 0.16, 'square', 0.06, 0.7),
+  pop: c => tone(520 * Math.pow(1.12, Math.min(c, 9)), 0.16, 'sine', 0.14, 1.3),
+  special: () => { tone(180, 0.45, 'sawtooth', 0.08, 3); tone(700, 0.3, 'triangle', 0.1, 2, 0.05); },
+  win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.3, 'triangle', 0.13, 1, i * 0.12)),
+  lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, 1, i * 0.15)),
+  click: () => tone(660, 0.07, 'triangle', 0.08)
+};
+
+// ---------- helpers ----------
+const rand = n => Math.floor(Math.random() * n);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const frame = () => new Promise(r => requestAnimationFrame(r));
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function txt(t, x, y, size, color, align = 'center', stroke) {
+  ctx.font = `700 ${size}px ${FONT}`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if (stroke) { ctx.lineWidth = size / 6; ctx.strokeStyle = stroke; ctx.lineJoin = 'round'; ctx.strokeText(t, x, y); }
+  ctx.fillStyle = color; ctx.fillText(t, x, y);
+}
+function rg(x0, y0, r0, x1, y1, r1, stops) {
+  const g = ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
+  stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g;
+}
+function lgrad(x0, y0, x1, y1, stops) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c)); return g;
+}
+
+// ---------- knowledge ----------
+const R = window.Sweets3D ? Sweets3D.REF : {};
+const refs = (...k) => k.map(x => R[x]).filter(Boolean);
+const CARDS = [
+  { title: 'ทองหยอด', icon: 0, text: 'ทองหยอดทำจากไข่แดง แป้ง และน้ำตาล หยอดลงในน้ำเชื่อมเดือดจนสุกเป็นเม็ดกลมสีทอง ชื่อสื่อว่าจะมีเงินทองใช้ไม่ขาดมือ',
+    q: 'ทองหยอดมีวัตถุดิบหลักคืออะไร?', c: ['ไข่แดง แป้ง น้ำตาล', 'ถั่วเขียว กะทิ', 'ข้าวเหนียว มะม่วง'], a: 0, refs: refs('michelin', 'tf9') },
+  { title: 'ทองหยิบ', icon: 1, text: 'ทองหยิบทำจากไข่แดง ต้มในน้ำเชื่อมแล้วหยิบมาจีบเป็นรูปดอกไม้ ชื่อมาจากวิธีทำนี้ และสื่อว่าหยิบจับสิ่งใดก็เป็นเงินเป็นทอง',
+    q: 'ชื่อ "ทองหยิบ" เกี่ยวกับอะไร?', c: ['วิธีหยิบจีบเป็นกลีบ', 'ชื่อของคนทำ', 'สถานที่ที่ทำขนม'], a: 0, refs: refs('michelin') },
+  { title: 'ท้าวทองกีบม้า', icon: 1, text: 'เชื่อกันว่าท้าวทองกีบม้า (มารี กีมาร์) ทำขนมตำรับโปรตุเกสในวังสมัยอยุธยา รัชสมัยสมเด็จพระนารายณ์ฯ ทำให้ขนมตระกูลทองแพร่หลาย แต่ประวัติบางช่วงยังมีการถกเถียง',
+    q: 'ใครเชื่อกันว่านำขนมไข่แบบโปรตุเกสมาปรับเป็นขนมไทย?', c: ['ท้าวทองกีบม้า', 'พระยาอนุมานราชธน', 'ท้าวสุรนารี'], a: 0, refs: refs('silpa') },
+  { title: 'ฝอยทอง', icon: 6, text: 'ฝอยทองคือเส้นไข่แดงบาง ๆ ที่โรยลงน้ำเชื่อมเดือด ดัดแปลงจากขนมโปรตุเกส fios de ovos แปลว่า "เส้นไข่" เส้นยาวสื่อถึงอายุที่ยืนยาว',
+    q: 'ฝอยทองได้แรงบันดาลใจจากขนมของประเทศใด?', c: ['ญี่ปุ่น', 'โปรตุเกส', 'อินเดีย'], a: 1, refs: refs('fios', 'michelin') },
+  { title: 'ลูกชุบ', icon: 2, text: 'ลูกชุบทำจากถั่วเขียวกวนกับน้ำตาลและกะทิ ปั้นเป็นผลไม้จิ๋ว แต้มสี แล้วชุบวุ้นให้เงา บางแหล่งระบุว่าตำรับเดิมใช้อัลมอนด์ก่อนเปลี่ยนเป็นถั่วเขียว',
+    q: 'ไส้ของลูกชุบทำจากอะไรเป็นหลัก?', c: ['เผือก', 'ถั่วเขียว', 'ฟักทอง'], a: 1, refs: refs('lukchup') },
+  { title: 'ขนมชั้น', icon: 3, text: 'ขนมชั้นนึ่งทีละชั้น นิยมทำ 9 ชั้น เพราะ "เก้า" พ้องเสียงกับ "ก้าว" ชื่อจึงสื่อถึงการเลื่อนชั้นเลื่อนตำแหน่ง',
+    q: 'ขนมชั้นแบบมงคลนิยมทำกี่ชั้น?', c: ['5 ชั้น', '7 ชั้น', '9 ชั้น'], a: 2, refs: refs('chan', 'michelin') },
+  { title: 'ช่อม่วง', icon: 4, text: 'ช่อม่วงเป็นขนมไทยไส้เค็ม แป้งบางนุ่มห่อไส้แล้วจีบเป็นช่อดอกไม้ สีม่วงมาจากดอกอัญชัน',
+    q: 'สีม่วงของช่อม่วงมาจากอะไร?', c: ['ดอกอัญชัน', 'ใบเตย', 'ขมิ้น'], a: 0, refs: [] },
+  { title: 'ดอกอัญชัน', icon: 4, text: 'น้ำดอกอัญชันสีน้ำเงิน เมื่อบีบมะนาวจะเปลี่ยนเป็นสีม่วง เพราะสารแอนโทไซยานินเปลี่ยนสีตามความเป็นกรด-ด่าง',
+    q: 'บีบมะนาวลงในน้ำอัญชัน สีจะเป็นอย่างไร?', c: ['เปลี่ยนเป็นสีม่วง', 'เปลี่ยนเป็นสีเขียว', 'ไม่เปลี่ยนสี'], a: 0, refs: refs('antho') },
+  { title: 'กลีบลำดวน', icon: 5, text: 'ขนมกลีบลำดวนปั้นเป็นรูปกลีบดอกลำดวน ทำจากแป้ง น้ำตาล และกะทิ แล้วอบ มักอบควันเทียนให้หอม',
+    q: 'ขนมกลีบลำดวนปั้นเป็นรูปอะไร?', c: ['กลีบดอกลำดวน', 'ผลมะพร้าว', 'ใบบัว'], a: 0, refs: [] },
+  { title: 'ขนมมงคล', icon: 1, text: '"ขนมมงคล" คือขนมที่ใช้ในงานพิธีมงคล เช่น งานแต่งงาน งานบวช งานขึ้นบ้านใหม่ โดยเลือกขนมที่มีชื่อเป็นสิริมงคล',
+    q: 'ขนมกลุ่มใดนิยมใช้ในงานมงคล?', c: ['ทองหยิบ ทองหยอด ฝอยทอง', 'ลอดช่อง เฉาก๊วย', 'ข้าวต้มมัด กล้วยบวชชี'], a: 0, refs: refs('michelin', 'tf9') },
+  { title: 'ตาลโตนด', icon: 0, text: 'ขนมไทยโบราณใช้วัตถุดิบใกล้ตัว เช่น ข้าว แป้ง มะพร้าว และน้ำตาลจากตาลโตนดหรือมะพร้าว',
+    q: 'น้ำตาลดั้งเดิมของขนมไทยโบราณได้จากพืชใด?', c: ['อ้อยเท่านั้น', 'ตาลโตนดและมะพร้าว', 'หัวบีต'], a: 1, refs: [] },
+  { title: 'ใบเตย', icon: 3, text: 'ใบเตยใช้คั้นน้ำใส่ขนมเพื่อให้ได้สีเขียวและกลิ่นหอม เป็นสีธรรมชาติที่ใช้กันมาช้านาน',
+    q: 'ใบเตยให้อะไรกับขนมไทย?', c: ['สีเขียวและกลิ่นหอม', 'สีแดงและรสเปรี้ยว', 'รสเค็มจัด'], a: 0, refs: [] },
+  { title: 'เม็ดขนุน', icon: 7, text: 'เม็ดขนุนทำจากถั่วเขียวกวน ปั้นเป็นรูปเมล็ดขนุน ชุบไข่แดงแล้วต้มในน้ำเชื่อม ชื่อสื่อว่าจะมีคนคอยหนุนนำ',
+    q: 'เม็ดขนุนสื่อความหมายมงคลว่าอะไร?', c: ['มีคนคอยหนุนนำ', 'อายุยืนยาว', 'เดินทางปลอดภัย'], a: 0, refs: refs('michelin') },
+  { title: 'ขนมถ้วยฟู', icon: 8, text: 'ขนมถ้วยฟูนึ่งในถ้วยเล็ก ขึ้นฟูจนผิวด้านบนแตกเป็นดอก อยู่ในชุดขนมมงคล 9 อย่าง นิยมตีความว่าความฟูหมายถึงความเฟื่องฟู',
+    q: 'ขนมถ้วยฟูทำให้สุกด้วยวิธีใด?', c: ['นึ่ง', 'ทอด', 'ปิ้ง'], a: 0, refs: refs('tf9') },
+  { title: 'จ่ามงกุฎ', icon: 9, text: 'จ่ามงกุฎเป็นขนมโบราณรูปทรงคล้ายมงกุฎ ทำยากและประณีต มักแต่งด้วยทองคำเปลว สื่อถึงยศตำแหน่งและความก้าวหน้า',
+    q: 'ขนมจ่ามงกุฎสื่อความหมายถึงอะไร?', c: ['ยศตำแหน่งและความก้าวหน้า', 'ความรักหวานชื่น', 'ฝนตกต้องตามฤดูกาล'], a: 0, refs: refs('michelin') },
+  { title: 'เลขเก้ากับขนมมงคล', icon: 3, text: 'ขนมมงคลนิยมจัดเป็นชุด 9 อย่าง เพราะคำว่า "เก้า" พ้องเสียงกับ "ก้าว" ที่หมายถึงความเจริญก้าวหน้า',
+    q: 'ทำไมขนมมงคลจึงนิยมจัด 9 อย่าง?', c: ['"เก้า" พ้องเสียงกับ "ก้าว"', 'เพราะมีขนมไทยแค่ 9 ชนิด', 'เพราะใช้ไข่ 9 ฟอง'], a: 0, refs: refs('tf9', 'michelin') }
+];
+let K = null;
+try { document.fonts.load('700 20px Kanit').then(() => wrapCache.clear()); } catch (e) {}
+const wrapCache = new Map();
+function wrapLines(t, maxW, size) {
+  const key = t + '|' + maxW + '|' + size; if (wrapCache.has(key)) return wrapCache.get(key);
+  ctx.font = `700 ${size}px ${FONT}`;
+  const segs = (window.Intl && Intl.Segmenter) ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(t)].map(s => s.segment) : [...t];
+  const lines = []; let cur = '';
+  for (const s of segs) {
+    if (cur && ctx.measureText(cur + s).width > maxW) { lines.push(cur.trim()); cur = s.trimStart(); } else cur += s;
+  }
+  if (cur.trim()) lines.push(cur.trim());
+  wrapCache.set(key, lines); return lines;
+}
+function para(t, x, y, maxW, lh, size, color, align = 'center') {
+  const lines = wrapLines(t, maxW, size);
+  lines.forEach((l, i) => txt(l, x, y + i * lh, size, color, align));
+  return y + lines.length * lh;
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function openLearn(L) {
+  const idx = (L - 1) % CARDS.length;
+  if (!save.cards.includes(idx)) save.cards.push(idx);
+  const pool = shuffle(save.cards.filter(i => i !== idx));
+  K = { step: 'card', idx, qs: [idx, ...pool.slice(0, 2)], i: 0, picked: -1, correct: 0, order: null, from: 'level', L };
+  persist(); mode = 'learn'; overlay = null;
+}
+function openQuestion() { K.step = 'quiz'; K.picked = -1; K.order = shuffle([0, 1, 2]); }
+function panel(y, h) {
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 24;
+  rr(30, y, 420, h, 28); ctx.fillStyle = lgrad(0, y, 0, y + h, ['#fff3d1', '#f1d595']); ctx.fill(); ctx.restore();
+  rr(30, y, 420, h, 28); ctx.strokeStyle = '#c8861f'; ctx.lineWidth = 5; ctx.stroke();
+}
+function drawLearn() {
+  const INK = '#4a2a10';
+  if (K.step === 'card') {
+    const card = CARDS[K.idx]; panel(60, 600);
+    txt('การ์ดความรู้ #' + (K.idx + 1), W / 2, 100, 18, '#8a4b00');
+    ctx.save(); ctx.translate(W / 2, 185 + Math.sin(now / 400) * 5); drawPiece(card.icon, 46); ctx.restore();
+    txt(card.title, W / 2, 280, 38, '#5a2c00');
+    let y = para(card.text, W / 2, 335, 370, 32, 21, INK) + 4;
+    if (card.refs && card.refs.length) {
+      txt('อ้างอิง (แตะเพื่อเปิด)', W / 2, y, 13, '#8a5a20'); y += 22;
+      card.refs.forEach(r => {
+        txt('🔗 ' + r.t, W / 2, y, 14, '#a04a00');
+        buttons.push({ x: 50, y: y - 11, w: 380, h: 22, fn: () => openLink(r.u) }); y += 22;
+      });
+    } else txt('ข้อมูลทั่วไป ควรตรวจสอบกับแหล่งอ้างอิงเพิ่มเติม', W / 2, y, 13, '#8a5a20');
+    if (K.from === 'book') button('กลับ', 150, 598, 180, 52, () => { sfx.click(); mode = 'book'; }, '#7fd6ff');
+    else button('ไปทำควิซ', 130, 598, 220, 52, () => { sfx.click(); openQuestion(); });
+  } else if (K.step === 'quiz') {
+    const card = CARDS[K.qs[K.i]]; panel(60, 640);
+    txt('ควิซ ข้อ ' + (K.i + 1) + ' / ' + K.qs.length, W / 2, 100, 20, '#8a4b00');
+    para(card.q, W / 2, 175, 360, 38, 26, INK);
+    card.c.forEach((_, k) => {
+      const orig = K.order[k], y = 290 + k * 84, done = K.picked >= 0;
+      let fill = ['#fff', '#ffe9b8'];
+      if (done && orig === card.a) fill = ['#b8f5a0', '#6fd26b']; else if (done && K.picked === k) fill = ['#ffc2c2', '#ff7a7a'];
+      buttons.push({ x: 60, y, w: 360, h: 68, fn: () => {
+        if (K.picked >= 0) return; K.picked = k;
+        if (K.order[k] === card.a) { K.correct++; sfx.pop(4); } else sfx.bad();
+      } });
+      rr(60, y, 360, 68, 20); ctx.fillStyle = lgrad(0, y, 0, y + 68, fill); ctx.fill();
+      ctx.strokeStyle = '#c8861f'; ctx.lineWidth = 3; ctx.stroke();
+      para(card.c[orig], W / 2, y + 34, 330, 22, 20, INK);
+    });
+    if (K.picked >= 0) {
+      const ok = K.order[K.picked] === card.a;
+      txt(ok ? 'ถูกต้อง! เก่งมาก' : 'ยังไม่ถูก ไม่เป็นไรนะ', W / 2, 570, 26, ok ? '#2f8a2a' : '#c0392b');
+      button(K.i + 1 < K.qs.length ? 'ข้อต่อไป' : 'ดูผล', 130, 610, 220, 52, () => {
+        sfx.click(); K.i++;
+        if (K.i >= K.qs.length) { K.step = 'result'; save.kp += K.correct; persist(); sfx.win(); popHooks(); } else openQuestion();
+      });
+    }
+  } else {
+    panel(100, 560);
+    txt('สรุปผลควิซ', W / 2, 160, 36, '#5a2c00');
+    txt(K.correct + ' / ' + K.qs.length, W / 2, 250, 80, '#d2760a');
+    txt('ได้แต้มความรู้ +' + K.correct, W / 2, 330, 26, INK);
+    txt('แต้มความรู้สะสม ' + save.kp, W / 2, 368, 20, '#8a4b00');
+    para('เก็บการ์ดใบใหม่ไว้ใน "สมุดความรู้" แล้ว', W / 2, 420, 360, 28, 20, INK);
+    if (K.L < LEVEL_COUNT) button('ด่านต่อไป', 130, 480, 220, 56, () => { sfx.click(); startLevel(K.L + 1); });
+    button('เลือกด่าน', 150, 552, 180, 48, () => { sfx.click(); mode = 'map'; }, '#7fd6ff');
+  }
+}
+function drawBook() {
+  txt('สมุดความรู้', W / 2, 66, 44, '#ffe27a', 'center', '#4a1a00');
+  txt('แต้มความรู้ ' + save.kp + '  ·  การ์ด ' + save.cards.length + '/' + CARDS.length, W / 2, 108, 18, '#e8fff8');
+  CARDS.forEach((cd, i) => {
+    const x = 24 + (i % 4) * 110, y = 134 + Math.floor(i / 4) * 122, open = save.cards.includes(i);
+    buttons.push({ x, y, w: 102, h: 112, fn: () => { if (open) { sfx.click(); K = { step: 'card', idx: i, from: 'book' }; mode = 'learn'; } } });
+    rr(x, y, 102, 112, 18); ctx.fillStyle = open ? lgrad(0, y, 0, y + 112, ['#fff3d1', '#f1d595']) : 'rgba(0,0,0,.4)'; ctx.fill();
+    ctx.strokeStyle = open ? '#c8861f' : 'rgba(255,255,255,.2)'; ctx.lineWidth = 2; ctx.stroke();
+    if (open) { ctx.save(); ctx.translate(x + 51, y + 44); drawPiece(cd.icon, 24); ctx.restore(); para(cd.title, x + 51, y + 88, 94, 15, 14, '#5a2c00'); }
+    else { txt('🔒', x + 51, y + 42, 28, '#fff'); txt('ด่าน ' + (i + 1), x + 51, y + 84, 15, 'rgba(255,255,255,.7)'); }
+  });
+  button('กลับ', 160, 650, 160, 52, () => { sfx.click(); mode = 'title'; }, '#7fd6ff');
+}
+// เปิดลิงก์ด้วยแท็ก a จริง (window.open ถูกบล็อกในบางที่ที่ฝังหน้าเว็บ)
+function openLink(u) { const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+// ส่งความคืบหน้าไปยังโปรไฟล์รวม (js/hub.js)
+function popHooks() {
+  if (!window.Hub) return;
+  const stars = Object.values(save.stars), total = stars.reduce((a, b) => a + b, 0);
+  Hub.stat('pop.levels', stars.length, 'set'); Hub.stat('pop.stars', total, 'set');
+  Hub.stat('pop.three', stars.filter(x => x >= 3).length, 'set');
+  Hub.stat('pop.kp', save.kp, 'set'); Hub.stat('pop.cards', save.cards.length, 'set');
+  Hub.submit('pop', total, true);
+}
+
+// ---------- background ----------
+const bg = document.createElement('canvas'); bg.width = W; bg.height = H;
+(function () {
+  const b = bg.getContext('2d');
+  b.fillStyle = (() => { const g = b.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0f4a4a'); g.addColorStop(.55, '#2b1b55'); g.addColorStop(1, '#5a1a4a'); return g; })();
+  b.fillRect(0, 0, W, H);
+  b.strokeStyle = 'rgba(255,215,120,.09)'; b.lineWidth = 1.5;
+  for (let y = -40; y < H + 40; y += 48) for (let x = -40; x < W + 40; x += 48) {
+    b.beginPath(); b.moveTo(x + 24, y); b.lineTo(x + 48, y + 24); b.lineTo(x + 24, y + 48); b.lineTo(x, y + 24); b.closePath(); b.stroke();
+    b.beginPath(); b.arc(x + 24, y + 24, 6, 0, 7); b.stroke();
+  }
+  const v = b.createRadialGradient(W / 2, H / 2, 150, W / 2, H / 2, 520);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.45)');
+  b.fillStyle = v; b.fillRect(0, 0, W, H);
+})();
+const petals = Array.from({ length: 22 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: 4 + Math.random() * 7, v: 0.2 + Math.random() * 0.5, p: Math.random() * 6, t: rand(6) }));
+
+// ---------- piece drawing ----------
+function shine(s) {
+  ctx.save(); ctx.rotate(-0.6); ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.beginPath(); ctx.ellipse(-s * .28, -s * .45, s * .3, s * .14, 0, 0, 7); ctx.fill(); ctx.restore();
+}
+// ใช้ภาพจากโมเดล 3D ถ้ามี ไม่งั้นวาดแบบ 2D
+function drawPiece(type, s) {
+  const sp = SPRITES && SPRITES[type];
+  if (sp) ctx.drawImage(sp, -s * 1.25, -s * 1.25, s * 2.5, s * 2.5); else drawPiece2D(type, s);
+}
+function drawPiece2D(type, s) {
+  ctx.lineWidth = 2;
+  switch (type) {
+    case 0: // ทองหยอด
+      ctx.fillStyle = rg(-s * .3, -s * .3, s * .1, 0, 0, s, ['#fff6a8', '#f7b500', '#b5600a']);
+      ctx.beginPath(); ctx.arc(0, 0, s * .9, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,60,0,.55)'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(0, 0, s * .55, .3, 2.3); ctx.stroke();
+      shine(s); break;
+    case 1: // ทองหยิบ
+      for (let i = 0; i < 8; i++) {
+        ctx.save(); ctx.rotate(i * Math.PI / 4);
+        ctx.fillStyle = lgrad(0, 0, 0, -s, ['#ff6a1a', '#ffb347']);
+        ctx.beginPath(); ctx.ellipse(0, -s * .55, s * .27, s * .42, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(130,40,0,.5)'; ctx.stroke(); ctx.restore();
+      }
+      ctx.fillStyle = rg(-s * .1, -s * .1, 1, 0, 0, s * .4, ['#ffe08a', '#e0761a']);
+      ctx.beginPath(); ctx.arc(0, 0, s * .38, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(130,40,0,.5)'; ctx.stroke(); break;
+    case 2: // ลูกชุบ
+      ctx.fillStyle = rg(-s * .3, -s * .2, s * .1, 0, 0, s, ['#ffc0cf', '#ff4f84', '#c4154f']);
+      ctx.beginPath(); ctx.ellipse(0, s * .06, s * .8, s * .86, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(110,0,40,.5)'; ctx.stroke();
+      ctx.fillStyle = '#3fae49'; ctx.beginPath(); ctx.moveTo(0, -s * .72);
+      ctx.quadraticCurveTo(s * .6, -s * 1.05, s * .62, -s * .5); ctx.quadraticCurveTo(s * .2, -s * .5, 0, -s * .72); ctx.fill();
+      ctx.strokeStyle = '#1f6b2a'; ctx.stroke(); shine(s); break;
+    case 3: { // ขนมชั้น
+      const a = s * .86; ctx.save(); rr(-a, -a, a * 2, a * 2, s * .3); ctx.clip();
+      const cols = ['#8fe36a', '#f4ffe5', '#3fae4f', '#c8f5a4', '#2f9444', '#f4ffe5'];
+      cols.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(-a, -a + i * (a * 2 / 6), a * 2, a * 2 / 6 + 1); });
+      ctx.fillStyle = lgrad(-a, -a, a, a, ['rgba(255,255,255,.35)', 'rgba(255,255,255,0)', 'rgba(0,0,0,.2)']); ctx.fillRect(-a, -a, a * 2, a * 2);
+      ctx.restore(); rr(-a, -a, a * 2, a * 2, s * .3); ctx.strokeStyle = 'rgba(10,70,30,.6)'; ctx.stroke(); break; }
+    case 4: // ช่อม่วง
+      for (let i = 0; i < 5; i++) {
+        ctx.save(); ctx.rotate(i * Math.PI * 2 / 5);
+        ctx.fillStyle = rg(0, -s * .5, 1, 0, -s * .5, s * .5, ['#e2bfff', '#a468f0', '#6d2fc0']);
+        ctx.beginPath(); ctx.arc(0, -s * .52, s * .42, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(50,10,100,.5)'; ctx.stroke(); ctx.restore();
+      }
+      ctx.fillStyle = rg(-s * .08, -s * .08, 1, 0, 0, s * .3, ['#fff4a8', '#f0b400']);
+      ctx.beginPath(); ctx.arc(0, 0, s * .3, 0, 7); ctx.fill(); ctx.strokeStyle = 'rgba(120,70,0,.5)'; ctx.stroke(); break;
+    case 5: // กลีบบัว
+      ctx.fillStyle = lgrad(0, s, 0, -s, ['#2b6fe0', '#6fcbff', '#c9f1ff']);
+      ctx.beginPath(); ctx.moveTo(0, s * .9);
+      ctx.bezierCurveTo(s * 1.0, s * .55, s * .8, -s * .3, 0, -s);
+      ctx.bezierCurveTo(-s * .8, -s * .3, -s * 1.0, s * .55, 0, s * .9); ctx.fill();
+      ctx.strokeStyle = 'rgba(10,50,120,.55)'; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.moveTo(0, s * .7); ctx.quadraticCurveTo(s * .15, 0, 0, -s * .6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s * .3, s * .5); ctx.quadraticCurveTo(-s * .45, 0, -s * .2, -s * .35); ctx.stroke(); break;
+  }
+}
+function drawBomb(s, now) {
+  ctx.save(); ctx.rotate(now / 600);
+  for (let i = 0; i < 6; i++) {
+    ctx.save(); ctx.rotate(i * Math.PI / 3);
+    ctx.fillStyle = TYPE_COLORS[i]; ctx.beginPath(); ctx.ellipse(0, -s * .55, s * .3, s * .46, 0, 0, 7); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+  ctx.fillStyle = rg(-s * .1, -s * .1, 1, 0, 0, s * .5, ['#ffffff', '#ffe8a0']);
+  ctx.beginPath(); ctx.arc(0, 0, s * .45, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c06a00'; ctx.font = `700 ${s * .7}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('★', 0, 1);
+}
+function drawSpecialMark(sp, s, now) {
+  ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1.5;
+  if (sp === 'row' || sp === 'col') {
+    if (sp === 'col') ctx.rotate(Math.PI / 2);
+    const k = Math.sin(now / 160) * 2;
+    for (const d of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(d * (s * .95 + k), 0); ctx.lineTo(d * (s * .45 + k), -s * .3); ctx.lineTo(d * (s * .45 + k), s * .3); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillRect(-s * .4, -3, s * .8, 6);
+  } else if (sp === 'blast') {
+    ctx.lineWidth = 3; ctx.strokeStyle = `rgba(255,255,255,${0.6 + 0.3 * Math.sin(now / 150)})`;
+    ctx.beginPath(); ctx.arc(0, 0, s * (1 + 0.06 * Math.sin(now / 150)), 0, 7); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = `700 ${s * .8}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('✦', 0, 0);
+  }
+  ctx.restore();
+}
+
+// ---------- 3D sweets (โมเดลจาก js/sweets3d.js ใช้ร่วมกับเกมอื่น) ----------
+let GL = null, SPRITES = null;
+(function init3D() {
+  if (!window.THREE || !window.Sweets3D) return;
+  try {
+    // ภาพไอคอนจากโมเดล 3D สำหรับ HUD การ์ด สมุด และหน้าแรก
+    SPRITES = Sweets3D.sprites(Sweets3D.DATA.map((_, i) => i));
+
+    // กระดาน 3D: กล้องตั้งฉาก จับคู่พิกัดพิกเซลของกระดาน 2D พอดี
+    const size = N * T, br = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+    br.setPixelRatio(dpr); br.setSize(size, size, false);
+    br.shadowMap.enabled = true; br.shadowMap.type = THREE.PCFSoftShadowMap;
+    const scene = new THREE.Scene(), cam = new THREE.OrthographicCamera(0, size, 0, -size, -500, 500); cam.position.z = 300;
+    const sun = Sweets3D.addLights(scene, new THREE.Vector3(size / 2 - 260, -size / 2 + 260, 460), new THREE.Vector3(size / 2, -size / 2, 0));
+    sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+    Object.assign(sun.shadow.camera, { left: -380, right: 380, top: 380, bottom: -380, near: 1, far: 1500 });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.ShadowMaterial({ opacity: .3 }));
+    plane.position.set(size / 2, -size / 2, -24); plane.receiveShadow = true; scene.add(plane);
+    const group = new THREE.Group(); scene.add(group);
+    const tpl = {};
+    const make = type => {
+      if (!tpl[type]) tpl[type] = type < 0 ? Sweets3D.makeBomb(TYPE_COLORS) : Sweets3D.makeSweet(type);
+      const outer = new THREE.Group(), tilt = new THREE.Group(), spin = new THREE.Group(), m = tpl[type].clone();
+      m.position.y = -.34; spin.add(m); tilt.add(spin); tilt.rotation.x = .55; outer.add(tilt);
+      outer.userData = { spin, phase: Math.random() * 6, ring: m.getObjectByName('ring') };
+      return outer;
+    };
+    GL = { renderer: br, scene, cam, group, make, S: 46 };
+  } catch (e) { console.warn('3D ปิดใช้งาน', e); GL = null; SPRITES = null; }
+})();
+function renderBoard3D(hs) {
+  const seen = new Set();
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const t = grid[r][c]; if (!t) continue;
+    if (!t.m3 || t.m3Type !== t.type) { t.m3 = GL.make(t.type); t.m3Type = t.type; GL.group.add(t.m3); }
+    const m = t.m3, u = m.userData, sq = t.sq || 0, sel = selected && selected.r === r && selected.c === c;
+    const off = hs.includes(r * N + c) ? Math.sin(now / 120) * 4 : 0;
+    m.position.set(t.x + T / 2, -(t.y + T / 2 + off), 0);
+    const s = GL.S * t.scale; m.scale.set(s * (1 + .14 * sq), s * (1 - .14 * sq), s);
+    u.spin.rotation.y = t.dying ? u.spin.rotation.y + .35 : sel ? now / 250 : Math.sin(now / 900 + u.phase) * .35;
+    if (u.ring) u.ring.rotation.y = now / 400;
+    seen.add(m);
+  }
+  for (const ch of [...GL.group.children]) if (!seen.has(ch)) GL.group.remove(ch);
+  GL.renderer.render(GL.scene, GL.cam);
+}
+
+// ---------- game state ----------
+let mode = 'title', overlay = null, buttons = [];
+let grid = [], S = null, busy = false, selected = null, drag = null, lastMove = performance.now(), hint = null;
+let particles = [], shake = 0, toast = null, now = 0;
+
+function levelDef(L) {
+  const types = L < 3 ? 5 : 6, collect = {};
+  if (L >= 2) collect[(L * 2) % types] = 10 + L * 2;
+  if (L >= 5) collect[(L * 2 + 3) % types] = 8 + L * 2;
+  return { L, types, moves: Math.max(16, 24 - Math.floor(L / 2)), score: 1200 + 600 * (L - 1), collect };
+}
+function newTile(type, r, c, fromRow) {
+  return { type, special: null, x: c * T, y: fromRow * T, vel: 0, scale: 1, sq: 0, fall: true, dying: false };
+}
+function findMove() {
+  const ok = (r, c) => r >= 0 && c >= 0 && r < N && c < N;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) for (const [dr, dc] of [[0, 1], [1, 0]]) {
+    const r2 = r + dr, c2 = c + dc; if (!ok(r2, c2)) continue;
+    const a = grid[r][c], b = grid[r2][c2]; if (!a || !b) continue;
+    if (a.special || b.special) return [{ r, c }, { r: r2, c: c2 }];
+    grid[r][c] = b; grid[r2][c2] = a;
+    const m = findMatches([]).clear.size > 0;
+    grid[r][c] = a; grid[r2][c2] = b;
+    if (m) return [{ r, c }, { r: r2, c: c2 }];
+  }
+  return null;
+}
+function fillBoard() {
+  do {
+    grid = Array.from({ length: N }, () => Array(N).fill(null));
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      let ty;
+      do { ty = rand(S.def.types); } while (
+        (c >= 2 && grid[r][c - 1].type === ty && grid[r][c - 2].type === ty) ||
+        (r >= 2 && grid[r - 1][c].type === ty && grid[r - 2][c].type === ty));
+      grid[r][c] = newTile(ty, r, c, r - N - c * 0.6);
+    }
+  } while (!findMove());
+}
+async function startLevel(L) {
+  const def = levelDef(L);
+  S = { L, def, score: 0, moves: def.moves, collect: { ...def.collect }, shown: 0 };
+  mode = 'play'; overlay = null; selected = null; drag = null; hint = null; particles = [];
+  busy = true; fillBoard(); await settle(); busy = false; lastMove = performance.now();
+}
+
+// ---------- match logic ----------
+function findMatches(hintCells) {
+  const clear = new Set(), create = new Map(), key = (r, c) => r * N + c;
+  const prio = { row: 1, col: 1, blast: 2, bomb: 3 };
+  const setCreate = (k, s) => { if (!create.has(k) || prio[s] > prio[create.get(k)]) create.set(k, s); };
+  const hCells = new Set(), vCells = new Set();
+  const runs = [];
+  for (let r = 0; r < N; r++) for (let c = 0; c < N;) {
+    const t = grid[r][c]; if (!t || t.type < 0 || t.dying) { c++; continue; }
+    let e = c; while (e + 1 < N && grid[r][e + 1] && !grid[r][e + 1].dying && grid[r][e + 1].type === t.type) e++;
+    if (e - c >= 2) { const cells = []; for (let i = c; i <= e; i++) { cells.push(key(r, i)); hCells.add(key(r, i)); } runs.push({ cells, dir: 'row' }); }
+    c = e + 1;
+  }
+  for (let c = 0; c < N; c++) for (let r = 0; r < N;) {
+    const t = grid[r][c]; if (!t || t.type < 0 || t.dying) { r++; continue; }
+    let e = r; while (e + 1 < N && grid[e + 1][c] && !grid[e + 1][c].dying && grid[e + 1][c].type === t.type) e++;
+    if (e - r >= 2) { const cells = []; for (let i = r; i <= e; i++) { cells.push(key(i, c)); vCells.add(key(i, c)); } runs.push({ cells, dir: 'col' }); }
+    r = e + 1;
+  }
+  for (const run of runs) {
+    run.cells.forEach(k => clear.add(k));
+    if (run.cells.length >= 4) {
+      const h = (hintCells || []).map(p => key(p.r, p.c)).find(k => run.cells.includes(k));
+      const pivot = h !== undefined ? h : run.cells[Math.floor(run.cells.length / 2)];
+      setCreate(pivot, run.cells.length >= 5 ? 'bomb' : run.dir);
+    }
+  }
+  for (const k of hCells) if (vCells.has(k)) setCreate(k, 'blast');
+  return { clear, create };
+}
+function expand(set) {
+  const out = new Set(set), q = [...set], add = k => { if (!out.has(k)) { out.add(k); q.push(k); } };
+  let triggered = false;
+  while (q.length) {
+    const k = q.pop(), r = Math.floor(k / N), c = k % N, t = grid[r][c];
+    if (!t || !t.special) continue;
+    triggered = true;
+    if (t.special === 'row') for (let i = 0; i < N; i++) add(r * N + i);
+    if (t.special === 'col') for (let i = 0; i < N; i++) add(i * N + c);
+    if (t.special === 'blast') for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (r + dr >= 0 && r + dr < N && c + dc >= 0 && c + dc < N) add((r + dr) * N + c + dc);
+    if (t.special === 'bomb') {
+      let target = t.target;
+      if (target === undefined) { const pool = []; grid.flat().forEach(x => x && x.type >= 0 && pool.push(x.type)); target = pool[rand(pool.length)]; }
+      for (let rr2 = 0; rr2 < N; rr2++) for (let cc = 0; cc < N; cc++) { const x = grid[rr2][cc]; if (x && (target === 'all' || x.type === target)) add(rr2 * N + cc); }
+    }
+  }
+  return { cells: out, triggered };
+}
+function burst(x, y, color, n = 10) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 7, sp = 1.5 + Math.random() * 4;
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.5, life: 30 + Math.random() * 20, max: 50, color, size: 2 + Math.random() * 4 });
+  }
+}
+function floatText(t, x, y, color = '#fff', size = 22) { particles.push({ text: t, x, y, vx: 0, vy: -1, life: 45, max: 45, color, size }); }
+function cellCenter(r, c) { return [BX + c * T + T / 2, BY + r * T + T / 2]; }
+
+async function clearSet(cells, cascade) {
+  let n = 0;
+  for (const k of cells) {
+    const r = Math.floor(k / N), c = k % N, t = grid[r][c]; if (!t || t.dying) continue;
+    t.dying = true; n++;
+    const [x, y] = cellCenter(r, c);
+    burst(x, y, t.type >= 0 ? TYPE_COLORS[t.type] : '#fff', 9);
+    if (t.type >= 0 && S.collect[t.type] > 0) S.collect[t.type]--;
+  }
+  const gain = n * 10 * cascade + (n > 3 ? (n - 3) * 15 : 0);
+  S.score += gain;
+  const mid = [...cells][Math.floor(cells.size / 2)];
+  const [fx, fy] = cellCenter(Math.floor(mid / N), mid % N);
+  floatText('+' + gain, fx, fy, '#fff6b0');
+  sfx.pop(cascade);
+  await sleep(240);
+  for (const k of cells) { const r = Math.floor(k / N), c = k % N; if (grid[r][c] && grid[r][c].dying) grid[r][c] = null; }
+}
+async function gravity() {
+  for (let c = 0; c < N; c++) {
+    let w = N - 1;
+    for (let r = N - 1; r >= 0; r--) if (grid[r][c]) {
+      if (w !== r) { grid[w][c] = grid[r][c]; grid[r][c] = null; grid[w][c].fall = true; }
+      w--;
+    }
+    for (let r = w; r >= 0; r--) grid[r][c] = newTile(rand(S.def.types), r, c, r - (w + 1) - 1);
+  }
+  await settle();
+}
+function isSettled() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const t = grid[r][c]; if (!t) continue;
+    if (t.fall || Math.abs(t.x - c * T) > 0.5 || Math.abs(t.y - r * T) > 0.5) return false;
+  }
+  return true;
+}
+async function settle() { await frame(); while (!isSettled()) await frame(); }
+
+async function resolve(hintCells) {
+  let cascade = 0;
+  for (;;) {
+    const m = findMatches(hintCells); hintCells = [];
+    if (!m.clear.size) break;
+    cascade++;
+    const base = [...m.clear].filter(k => !m.create.has(k));
+    const ex = expand(new Set(base));
+    if (ex.triggered) { sfx.special(); shake = 10; }
+    if (cascade >= 2) { toast = { t: ['', '', 'หวาน!', 'อร่อย!', 'เลิศรส!', 'สุดยอด!'][Math.min(cascade, 5)], life: 55 }; }
+    for (const [k, s] of m.create) if (!ex.cells.has(k)) {
+      const t = grid[Math.floor(k / N)][k % N]; t.special = s; if (s === 'bomb') t.type = -1; t.sq = 1;
+      const [x, y] = cellCenter(Math.floor(k / N), k % N); burst(x, y, '#fff', 14);
+    } else m.create.delete(k);
+    const clearCells = new Set([...ex.cells].filter(k => !m.create.has(k)));
+    await clearSet(clearCells, cascade);
+    await gravity();
+  }
+}
+async function trySwap(a, b) {
+  if (busy || mode !== 'play' || overlay) return;
+  busy = true; selected = null; hint = null;
+  const A = grid[a.r][a.c], B = grid[b.r][b.c];
+  grid[a.r][a.c] = B; grid[b.r][b.c] = A; sfx.swap();
+  await settle();
+  let did = false;
+  const specials = [];
+  if (A.special) specials.push([b, A, B]); if (B.special) specials.push([a, B, A]);
+  if (specials.length) {
+    did = true; const set = new Set();
+    for (const [pos, sp, other] of specials) {
+      if (sp.special === 'bomb') sp.target = (other.special === 'bomb') ? 'all' : other.type;
+      set.add(pos.r * N + pos.c);
+    }
+    const ex = expand(set); sfx.special(); shake = 14;
+    await clearSet(ex.cells, 1); await gravity(); await resolve([]);
+  } else if (findMatches([a, b]).clear.size) {
+    did = true; await resolve([a, b]);
+  } else {
+    sfx.bad(); grid[a.r][a.c] = A; grid[b.r][b.c] = B; await settle();
+  }
+  if (did) {
+    S.moves--;
+    if (checkEnd()) { busy = false; return; }
+    if (!findMove()) { toast = { t: 'สับกระดาน', life: 70 }; fillBoard(); await settle(); }
+  }
+  busy = false; lastMove = performance.now();
+}
+function goalsMet() { return S.score >= S.def.score && Object.values(S.collect).every(v => v <= 0); }
+function checkEnd() {
+  if (goalsMet()) {
+    const ratio = S.moves / S.def.moves, stars = ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
+    S.score += S.moves * 50;
+    save.stars[S.L] = Math.max(save.stars[S.L] || 0, stars);
+    save.unlocked = Math.max(save.unlocked, Math.min(LEVEL_COUNT, S.L + 1)); persist(); popHooks();
+    overlay = { kind: 'win', stars, t: now }; sfx.win(); return true;
+  }
+  if (S.moves <= 0) { overlay = { kind: 'lose', t: now }; sfx.lose(); return true; }
+  return false;
+}
+
+// ---------- per-frame update ----------
+function update() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const t = grid[r] && grid[r][c]; if (!t) continue;
+    const tx = c * T, ty = r * T;
+    t.x += (tx - t.x) * 0.35; if (Math.abs(tx - t.x) < 0.5) t.x = tx;
+    const dy = ty - t.y;
+    if (t.fall && dy > 0) {
+      t.vel += 1.3; t.y += Math.min(dy, t.vel);
+      if (t.y >= ty - 0.01) { t.y = ty; t.fall = false; t.vel = 0; t.sq = 0.8; }
+    } else { t.fall = false; t.y += dy * 0.35; if (Math.abs(dy) < 0.5) t.y = ty; }
+    if (t.sq > 0) t.sq = Math.max(0, t.sq - 0.07);
+    if (t.dying) t.scale = Math.max(0, t.scale - 0.09);
+  }
+  for (const p of particles) { p.x += p.vx; p.y += p.vy; if (!p.text) p.vy += 0.15; p.life--; }
+  particles = particles.filter(p => p.life > 0);
+  shake *= 0.88; if (shake < 0.3) shake = 0;
+  if (toast && --toast.life <= 0) toast = null;
+  if (mode === 'play' && !busy && !overlay && !hint && now - lastMove > 5000) hint = findMove();
+  if (S) S.shown += (S.score - S.shown) * 0.15;
+}
+
+// ---------- drawing ----------
+function button(label, x, y, w, h, fn, color = '#ffb81f') {
+  buttons.push({ x, y, w, h, fn });
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+  rr(x, y, w, h, h / 2); ctx.fillStyle = lgrad(0, y, 0, y + h, ['#ffe27a', color, '#d27d00']); ctx.fill(); ctx.restore();
+  rr(x, y, w, h, h / 2); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.stroke();
+  txt(label, x + w / 2, y + h / 2 + 1, h * .48, '#5a2c00');
+}
+function iconBtn(label, x, y, s, fn) {
+  buttons.push({ x, y, w: s, h: s, fn });
+  ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2, s / 2, 0, 7); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,215,120,.8)'; ctx.lineWidth = 2; ctx.stroke();
+  txt(label, x + s / 2, y + s / 2 + 1, s * .5, '#fff');
+}
+function drawTile(t, cx, cy, off = 0) {
+  ctx.save(); ctx.translate(cx, cy + off);
+  const sq = t.sq || 0; ctx.scale((1 + 0.14 * sq) * t.scale, (1 - 0.14 * sq) * t.scale);
+  ctx.globalAlpha = Math.min(1, t.scale * 1.4);
+  if (t.special) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 12 + 6 * Math.sin(now / 200); }
+  if (t.type < 0) drawBomb(22, now); else drawPiece(t.type, 22);
+  ctx.shadowBlur = 0;
+  if (t.special && t.type >= 0) drawSpecialMark(t.special, 22, now);
+  ctx.restore();
+}
+function drawBoard() {
+  const sx = shake ? (Math.random() - .5) * shake : 0, sy = shake ? (Math.random() - .5) * shake : 0;
+  ctx.save(); ctx.translate(sx, sy);
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 24;
+  rr(BX - 12, BY - 12, N * T + 24, N * T + 24, 22); ctx.fillStyle = lgrad(0, BY, 0, BY + N * T, ['#ffe27a', '#d9961b', '#8a560a']); ctx.fill(); ctx.restore();
+  rr(BX - 6, BY - 6, N * T + 12, N * T + 12, 16); ctx.fillStyle = '#1b1238'; ctx.fill();
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    rr(BX + c * T + 2, BY + r * T + 2, T - 4, T - 4, 10);
+    ctx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.12)'; ctx.fill();
+  }
+  ctx.save(); rr(BX - 6, BY - 6, N * T + 12, N * T + 12, 16); ctx.clip();
+  const hs = hint ? hint.map(h => h.r * N + h.c) : [];
+  if (GL) {
+    renderBoard3D(hs);
+    ctx.drawImage(GL.renderer.domElement, BX, BY, N * T, N * T);
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const t = grid[r][c]; if (!t || !t.special || t.type < 0) continue;
+      ctx.save(); ctx.translate(BX + t.x + T / 2, BY + t.y + T / 2); ctx.scale(t.scale, t.scale);
+      ctx.shadowColor = '#fff'; ctx.shadowBlur = 10 + 6 * Math.sin(now / 200);
+      drawSpecialMark(t.special, 22, now); ctx.restore();
+    }
+  } else for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const t = grid[r][c]; if (!t) continue;
+    const off = hs.includes(r * N + c) ? Math.sin(now / 120) * 4 : 0;
+    drawTile(t, BX + t.x + T / 2, BY + t.y + T / 2, off);
+  }
+  if (selected) {
+    const [x, y] = cellCenter(selected.r, selected.c);
+    rr(x - T / 2 + 2, y - T / 2 + 2, T - 4, T - 4, 10); ctx.strokeStyle = `rgba(255,255,255,${.7 + .3 * Math.sin(now / 120)})`; ctx.lineWidth = 3; ctx.stroke();
+  }
+  ctx.restore(); ctx.restore();
+}
+function drawHUD() {
+  txt('ด่าน ' + S.L, W / 2, 34, 26, '#ffe27a', 'center', '#3a1a00');
+  iconBtn('☰', 14, 14, 40, () => { sfx.click(); mode = 'map'; });
+  iconBtn(muted ? '🔇' : '🔊', W - 54, 14, 40, () => { muted = !muted; });
+  // score bar
+  const bx = 24, by = 70, bw = 300;
+  txt('คะแนน', bx, by - 4, 14, '#cfe', 'left');
+  txt(Math.round(S.shown) + ' / ' + S.def.score, bx + bw, by - 4, 14, '#fff', 'right');
+  rr(bx, by + 8, bw, 16, 8); ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fill();
+  const p = Math.min(1, S.shown / S.def.score);
+  if (p > 0.01) { rr(bx, by + 8, Math.max(16, bw * p), 16, 8); ctx.fillStyle = lgrad(0, by, bw, by, ['#ff8a2a', '#ffe14d']); ctx.fill(); }
+  rr(bx, by + 8, bw, 16, 8); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  [1, 2, 3].forEach(i => txt('★', bx + bw * (i / 3) - 8, by + 16, 14, '#ffe27a'));
+  // moves
+  ctx.beginPath(); ctx.arc(W - 62, 100, 40, 0, 7); ctx.fillStyle = rg(W - 70, 88, 4, W - 62, 100, 40, ['#ff9bd0', '#c2185b']); ctx.fill();
+  ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 3; ctx.stroke();
+  txt(String(S.moves), W - 62, 98, 34, '#fff'); txt('ตาเดิน', W - 62, 122, 12, '#ffe');
+  // collect goals
+  const ids = Object.keys(S.collect);
+  ids.forEach((id, i) => {
+    const gx = 40 + i * 120, gy = 175;
+    rr(gx - 28, gy - 30, 112, 60, 16); ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fill();
+    ctx.save(); ctx.translate(gx, gy); drawPiece(+id, 18); ctx.restore();
+    const left = Math.max(0, S.collect[id]);
+    if (left === 0) txt('✓', gx + 52, gy, 26, '#8fe36a'); else txt('× ' + left, gx + 52, gy, 22, '#fff');
+  });
+  if (!ids.length) txt('ทำคะแนนให้ถึงเป้า!', W / 2 - 40, 175, 20, '#ffe');
+  const card = CARDS[(S.L - 1) % CARDS.length];
+  txt('รู้หรือไม่? · ' + card.title, W / 2, 710, 13, '#ffe27a');
+  para(card.text, W / 2, 728, 430, 16, 12, '#e8fff8');
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.max);
+    if (p.text) txt(p.text, p.x, p.y, p.size, p.color, 'center', '#3a1a00');
+    else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * ctx.globalAlpha + .5, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  if (toast && toast.t) {
+    const k = toast.life / 55, sc = 1 + (1 - Math.min(1, k * 3)) * 0;
+    ctx.globalAlpha = Math.min(1, k * 2); ctx.save(); ctx.translate(W / 2, BY + N * T / 2); ctx.scale(sc * (1.3 - 0.3 * k), sc * (1.3 - 0.3 * k));
+    txt(toast.t, 0, 0, 56, '#fff3a0', 'center', '#7a2a00'); ctx.restore(); ctx.globalAlpha = 1;
+  }
+}
+function drawBg() {
+  ctx.drawImage(bg, 0, 0, W, H);
+  for (const p of petals) {
+    p.y += p.v; p.x += Math.sin(now / 900 + p.p) * 0.4; if (p.y > H + 20) { p.y = -20; p.x = Math.random() * W; }
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(now / 1200 + p.p); ctx.globalAlpha = .35; drawPiece(p.t, p.s); ctx.restore();
+  }
+}
+function drawTitle() {
+  txt('ขนมไทย', W / 2, 190, 76, '#ffe27a', 'center', '#4a1a00');
+  txt('ป๊อป!', W / 2, 270, 84, '#ff8fc0', 'center', '#4a0a30');
+  if (GL) txt('3D', W / 2 + 128, 236, 34, '#7fd6ff', 'center', '#0a2a4a');
+  for (let i = 0; i < 6; i++) {
+    ctx.save(); ctx.translate(60 + i * 72, 380 + Math.sin(now / 400 + i) * 12); ctx.rotate(Math.sin(now / 700 + i) * .2); drawPiece(i, 28); ctx.restore();
+  }
+  txt('จับคู่ขนมไทย 3 ชิ้นขึ้นไป', W / 2, 460, 20, '#e8fff8');
+  button(save.unlocked > 1 ? 'เล่นต่อ' : 'เริ่มเล่น', 120, 520, 240, 64, () => { sfx.click(); startLevel(Math.min(save.unlocked, LEVEL_COUNT)); });
+  button('เลือกด่าน', 140, 600, 200, 52, () => { sfx.click(); mode = 'map'; }, '#7fd6ff');
+  button('สมุดความรู้', 140, 666, 200, 52, () => { sfx.click(); mode = 'book'; }, '#ffb3d9');
+}
+function drawMap() {
+  txt('เลือกด่าน', W / 2, 90, 44, '#ffe27a', 'center', '#4a1a00');
+  for (let i = 0; i < LEVEL_COUNT; i++) {
+    const L = i + 1, x = 30 + (i % 4) * 108, y = 150 + Math.floor(i / 4) * 118, open = L <= save.unlocked;
+    buttons.push({ x, y, w: 100, h: 100, fn: () => open && (sfx.click(), startLevel(L)) });
+    rr(x, y, 100, 100, 22); ctx.fillStyle = open ? lgrad(0, y, 0, y + 100, ['#ffe27a', '#ffa41f']) : 'rgba(0,0,0,.4)'; ctx.fill();
+    ctx.strokeStyle = open ? '#fff' : 'rgba(255,255,255,.2)'; ctx.lineWidth = 2; ctx.stroke();
+    txt(open ? String(L) : '🔒', x + 50, y + 42, open ? 44 : 34, open ? '#5a2c00' : '#fff');
+    if (open) txt('★'.repeat(save.stars[L] || 0) + '☆'.repeat(3 - (save.stars[L] || 0)), x + 50, y + 82, 18, '#8a3d00');
+  }
+  txt('แต้มความรู้ ' + save.kp, W / 2, 128, 18, '#e8fff8');
+  button('สมุดความรู้', 50, 660, 190, 52, () => { sfx.click(); mode = 'book'; }, '#ffb3d9');
+  button('กลับ', 260, 660, 170, 52, () => { sfx.click(); mode = 'title'; }, '#7fd6ff');
+}
+function drawOverlay() {
+  buttons = [];
+  ctx.fillStyle = 'rgba(10,0,30,.7)'; ctx.fillRect(0, 0, W, H);
+  const k = Math.min(1, (now - overlay.t) / 300), e = 1 - Math.pow(1 - k, 3);
+  ctx.save(); ctx.translate(W / 2, H / 2 - 20); ctx.scale(e, e);
+  rr(-190, -200, 380, 400, 30); ctx.fillStyle = lgrad(0, -200, 0, 200, ['#4a2a86', '#2a1458']); ctx.fill();
+  ctx.strokeStyle = '#ffd36a'; ctx.lineWidth = 5; ctx.stroke();
+  if (overlay.kind === 'win') {
+    txt('ผ่านด่าน!', 0, -140, 56, '#ffe27a', 'center', '#4a1a00');
+    for (let i = 0; i < 3; i++) {
+      const on = i < overlay.stars, d = Math.max(0, Math.min(1, (now - overlay.t - 300 - i * 250) / 300));
+      txt('★', -70 + i * 70, -60 + (i === 1 ? -10 : 0), (on ? 20 + 54 * d : 64), on ? '#ffd23a' : 'rgba(255,255,255,.2)', 'center', on ? '#7a4a00' : null);
+    }
+    txt('คะแนน ' + S.score, 0, 10, 28, '#fff');
+  } else {
+    txt('เสียดายจัง', 0, -130, 52, '#ff9bb0', 'center', '#400020');
+    txt('ลองใหม่อีกครั้งนะ', 0, -60, 24, '#fff');
+    txt('คะแนน ' + S.score + ' / ' + S.def.score, 0, 0, 24, '#ffe');
+  }
+  ctx.restore();
+  const oy = H / 2 - 20, os = e;
+  if (os > .95) {
+    if (overlay.kind === 'win') button('รับการ์ดความรู้', 130, oy + 40, 220, 56, () => { sfx.click(); openLearn(S.L); });
+    button('เล่นอีกครั้ง', 130, oy + (overlay.kind === 'win' ? 110 : 50), 220, 52, () => { sfx.click(); startLevel(S.L); }, '#7fd6ff');
+    button('เลือกด่าน', 150, oy + (overlay.kind === 'win' ? 176 : 116), 180, 44, () => { sfx.click(); mode = 'map'; overlay = null; }, '#c9a0ff');
+  }
+}
+function loop(ts) {
+  now = ts || performance.now();
+  update();
+  buttons = [];
+  ctx.clearRect(0, 0, W, H);
+  drawBg();
+  if (mode === 'title') drawTitle();
+  else if (mode === 'map') drawMap();
+  else if (mode === 'book') drawBook();
+  else if (mode === 'learn' && K) drawLearn();
+  else if (mode === 'play' && S) { drawHUD(); drawBoard(); drawParticles(); if (overlay) drawOverlay(); }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+if (window.Hub) { Hub.visit('pop'); Hub.mountMusic(); popHooks(); }
+
+// ---------- input ----------
+function pos(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
+function cellAt(p) {
+  const c = Math.floor((p.x - BX) / T), r = Math.floor((p.y - BY) / T);
+  return (r >= 0 && c >= 0 && r < N && c < N) ? { r, c } : null;
+}
+cv.addEventListener('pointerdown', e => {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (err) {} }
+  if (ac && ac.state === 'suspended') ac.resume();
+  const p = pos(e);
+  for (let i = buttons.length - 1; i >= 0; i--) {
+    const b = buttons[i];
+    if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { b.fn(); return; }
+  }
+  if (mode !== 'play' || busy || overlay) return;
+  const cell = cellAt(p); if (!cell) { selected = null; return; }
+  hint = null; lastMove = performance.now();
+  if (selected && Math.abs(selected.r - cell.r) + Math.abs(selected.c - cell.c) === 1) { const a = selected; trySwap(a, cell); drag = null; return; }
+  selected = cell; drag = { cell, x: p.x, y: p.y };
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag || busy || overlay) return;
+  const p = pos(e), dx = p.x - drag.x, dy = p.y - drag.y;
+  if (Math.hypot(dx, dy) < T * 0.4) return;
+  const a = drag.cell, b = Math.abs(dx) > Math.abs(dy) ? { r: a.r, c: a.c + Math.sign(dx) } : { r: a.r + Math.sign(dy), c: a.c };
+  drag = null;
+  if (b.r >= 0 && b.c >= 0 && b.r < N && b.c < N) trySwap(a, b);
+});
+addEventListener('pointerup', () => { drag = null; });
+</script>
+</body>
+</html>
