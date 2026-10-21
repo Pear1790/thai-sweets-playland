@@ -2,6 +2,8 @@
 
 A collection of browser games that teach Thai culture through Thai desserts. Play mini-games, earn coins, collect sweets, and read about each one.
 
+![Screenshot](screenshot.png)
+
 **▶ Live demo:** https://pear1790.github.io/thai-sweets-playland/
 
 ## Games
